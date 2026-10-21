@@ -116,6 +116,33 @@ final class Ledger
         ));
     }
 
+    /**
+     * Categories this space actually uses most (last half-year), for one-tap picking; defaults when there is no history yet.
+     *
+     * @return list<Category>
+     */
+    public function topCategories(Scope $s, string $kind, int $limit = 6): array
+    {
+        $rows = $this->operations($s)->select('IDENTITY(o.category) cid, COUNT(o.id) n')
+            ->andWhere('o.type = :k AND o.category IS NOT NULL AND o.date >= :since')
+            ->setParameter('k', $kind)->setParameter('since', new \DateTimeImmutable('-6 months'), 'date_immutable')
+            ->groupBy('o.category')->orderBy('n', \SortDirection::Descending)->setMaxResults(30)->getQuery()->getArrayResult();
+        $all = [];
+        foreach ($this->categories($s, $kind) as $c) {
+            $all[(string) $c->id] = $c;
+        }
+        $top = [];
+        foreach ($rows as $r) {
+            if (isset($all[$r['cid']])) {
+                $top[$r['cid']] = $all[$r['cid']];
+            }
+        }
+        // fill up with the remaining ones in their usual order
+        $top += $all;
+
+        return \array_slice(array_values($top), 0, $limit);
+    }
+
     /** @return list<Category> */
     public function categories(Scope $s, ?string $kind = null, bool $archived = false): array
     {

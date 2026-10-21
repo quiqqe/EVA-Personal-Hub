@@ -39,8 +39,13 @@
             <b class="{{ balances[a.id.toRfc4122] < 0 ? 'expense' }}">{{ balances[a.id.toRfc4122]|money(a.currency) }}</b>
         </a>
     {% else %}
-        <p class="muted">{{ scope.group ? 'Создайте общий счёт группы (копилку, общую карту) или покажите группе свой личный счёт: «Счета» → счёт → «Показывать группе».' : 'Добавьте первый счёт: наличные, карту или копилку.' }}</p>
-        <a class="btn primary" href="{{ path('money_account_new', {scope: scope.key, type: 'cash'}) }}">＋ Добавить счёт</a>
+        {% if scope.group %}
+            <p class="muted">У группы пока нет общих денег. Создайте общий счёт (копилку, общую карту) — или покажите группе свой личный: «Личное» → «Счета» → счёт → «Показывать группам».</p>
+            {% include 'money/_quick_accounts.html.twig' with {only: ['card', 'savings', 'cash']} %}
+        {% else %}
+            <p class="muted">С чего начать: заведите счета — где лежат ваши деньги. Остаток на сегодня можно указать сразу.</p>
+            {% include 'money/_quick_accounts.html.twig' %}
+        {% endif %}
     {% endfor %}
     </div>
 </section>

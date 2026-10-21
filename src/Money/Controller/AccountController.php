@@ -45,9 +45,12 @@ final class AccountController extends BaseController
     {
         $a = $id ? $this->find($scope, $id) : (new Account())->setScope($scope);
         if (!$id) {
-            $a->currency = $scope->currency();
-            $a->type = (string) $r->query->get('type', 'card');
+            // presets from quick-start buttons: ?type=cash&currency=USDT&name=…
+            $a->type = \array_key_exists((string) $r->query->get('type'), Account::TYPES) ? (string) $r->query->get('type') : 'card';
+            $a->currency = isset(Money::choices()[(string) $r->query->get('currency')]) ? (string) $r->query->get('currency') : $scope->currency();
+            $a->name = mb_substr((string) $r->query->get('name'), 0, 100);
         }
+        $return = self::localPath((string) ($r->request->get('return') ?? $r->query->get('return')));
         $error = null;
         if ($r->isMethod('POST')) {
             $this->checkCsrf($r);
@@ -76,11 +79,13 @@ final class AccountController extends BaseController
                 $this->em->persist($a);
                 $this->em->flush();
 
-                return $this->redirectToRoute('money_accounts', ['scope' => $scope->key()]);
+                // back to where the account was needed (an operation form, a goal…)
+                return $return ? $this->redirect($return) : $this->redirectToRoute('money_accounts', ['scope' => $scope->key()]);
             }
         }
 
         return $this->render('money/account_form.html.twig', [
+            'return' => $return,
             'scope' => $scope,
             'account' => $a,
             'isNew' => !$id,
@@ -113,6 +118,28 @@ final class AccountController extends BaseController
         }
 
         return $this->redirectToRoute('money_accounts', ['scope' => $scope->key()]);
+    }
+
+    /** Show a personal account to a group in one tap (from a hint in the operation form). */
+    #[Route('/{id}/share/{group}', name: 'money_account_share', methods: ['POST'], requirements: ['id' => '[0-9a-f-]{36}', 'group' => '[0-9a-f-]{36}'])]
+    public function share(Request $r, Scope $scope, string $id, string $group): Response
+    {
+        $this->checkCsrf($r);
+        $a = $this->find($scope, $id);
+        foreach ($this->ledger->groupsOf($scope->me) as $g) {
+            if ((string) $g->id === $group && $a->user === $scope->me && !$a->sharedWith->contains($g)) {
+                $a->sharedWith->add($g);
+                $this->em->flush();
+            }
+        }
+
+        return $this->json(['ok' => true]);
+    }
+
+    /** Only paths on this site: never redirect elsewhere. */
+    public static function localPath(string $path): ?string
+    {
+        return preg_match('#^/(?![/\\\\])#', $path) ? $path : null;
     }
 
     private function find(Scope $scope, string $id): Account

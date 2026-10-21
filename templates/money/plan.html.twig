@@ -48,7 +48,8 @@
             </div>
         </div>
     {% else %}
-        <p class="muted">Цель привязывается к счёту-копилке: прогресс — его баланс.</p>
+        <p class="muted">Цель привязывается к счёту-копилке: прогресс — его баланс. Копите на отдельном счёте — заведите его в один тап:</p>
+        {% if not accounts %}{% include 'money/_quick_accounts.html.twig' with {only: ['savings'], return: path('money_plan', {scope: scope.key})} %}{% endif %}
     {% endfor %}
     {% if accounts %}
     <form method="post" action="{{ path('money_goal_save', {scope: scope.key}) }}" class="stack">

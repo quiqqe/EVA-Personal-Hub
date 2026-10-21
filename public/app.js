@@ -291,6 +291,58 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('input', e => { if (e.target.matches('[data-part], [data-paid], [name=amount]')) update(); });
     update();
 
+    // frequent categories as one-tap chips (the select below stays for the rest)
+    const chips = $('[data-cat-chips]'), catSelect = $('[name=category]');
+    const syncChips = () => {
+        if (!chips) return;
+        const type = form.querySelector('[name=type]:checked').value;
+        chips.hidden = type === 'transfer';
+        chips.querySelectorAll('[data-chip]').forEach(b => {
+            b.hidden = b.dataset.kind !== type;
+            b.classList.toggle('on', b.dataset.chip === catSelect.value);
+        });
+    };
+    chips?.addEventListener('click', e => {
+        const b = e.target.closest('[data-chip]');
+        if (!b) return;
+        catSelect.value = catSelect.value === b.dataset.chip ? '' : b.dataset.chip;
+        catSelect.dispatchEvent(new Event('change', {bubbles: true}));
+    });
+    form.addEventListener('change', syncChips);
+    syncChips();
+
+    // group hints: topping up a common account from your own card is a transfer; a personal card the group can't see
+    const groupId = form.dataset.group;
+    if (groupId) {
+        const topup = $('[data-hint-topup]'), unshared = $('[data-hint-unshared]');
+        const accountSel = $('[name=account]');
+        const hints = () => {
+            const type = form.querySelector('[name=type]:checked').value, opt = accountSel.selectedOptions[0];
+            const accountShown = !$('[data-account]').hidden;
+            topup.hidden = !(accountShown && type === 'income' && opt?.dataset.group === groupId);
+            const mine = opt?.dataset.mine && !(opt.dataset.shared || '').split(' ').includes(groupId);
+            unshared.hidden = !(accountShown && type !== 'transfer' && mine);
+            if (!unshared.hidden) $('[data-hint-account]').textContent = opt.dataset.name;
+        };
+        $('[data-make-transfer]').addEventListener('click', () => {
+            const common = accountSel.value;
+            form.querySelector('[name=type][value=transfer]').checked = true;
+            const own = [...accountSel.options].find(o => o.dataset.mine);
+            if (own) accountSel.value = own.value;
+            const to = $('[name=to_account]');
+            if (to) to.value = common;
+            [accountSel, to].forEach(el => el?.dispatchEvent(new Event('change', {bubbles: true})));
+        });
+        $('[data-share-account]').addEventListener('click', async e => {
+            const opt = accountSel.selectedOptions[0], url = form.dataset.shareUrl.replace('00000000-0000-0000-0000-00000000000a', opt.value).replace('00000000-0000-0000-0000-00000000000b', groupId);
+            const r = await fetch(url, {method: 'POST', body: new URLSearchParams({_token: form.dataset.token}), headers: {Accept: 'application/json'}});
+            if (r.ok) { opt.dataset.shared = ((opt.dataset.shared || '') + ' ' + groupId).trim(); hints(); }
+            else e.target.textContent = 'Не получилось — попробуйте в настройках счёта';
+        });
+        form.addEventListener('change', hints);
+        hints();
+    }
+
     // income/expense in another currency than the account's: market rate of the operation's day is filled in,
     // the person can replace it with the exchanger's/bank's rate or the sum that actually hit the account
     const amtCur = $('[name=amount_currency]'), fxBox = $('[data-fx-foreign]');

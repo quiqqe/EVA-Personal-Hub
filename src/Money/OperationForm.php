@@ -238,6 +238,7 @@ final class OperationForm
             'sources' => $this->ledger->sourceAccounts($s),
             'targets' => $this->ledger->reachableAccounts($s->me),
             'categories' => ['expense' => $this->ledger->categories($s, 'expense'), 'income' => $this->ledger->categories($s, 'income')],
+            'topCategories' => ['expense' => $this->ledger->topCategories($s, 'expense'), 'income' => $this->ledger->topCategories($s, 'income')],
             'members' => $members,
         ];
     }

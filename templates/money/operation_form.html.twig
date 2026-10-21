@@ -12,7 +12,14 @@
 {% endif %}
 {% block body %}
 <h1>{{ recurring ? (isNew ? 'Регулярная операция' : 'Изменить регулярную') : (isNew ? 'Новая операция' : 'Операция') }}</h1>
-<form method="post" class="card op-form" data-op-form>
+{% if not sources and not o.account %}
+<section class="card">
+    <h2>Сначала нужен счёт</h2>
+    <p class="muted">Операция всегда записывается на счёт — туда, где лежат деньги. Выберите, что завести: после сохранения вернёмся сюда.</p>
+    {% include 'money/_quick_accounts.html.twig' with {return: app.request.requestUri} %}
+</section>
+{% else %}
+<form method="post" class="card op-form" data-op-form data-group="{{ scope.group ? scope.group.id }}" data-share-url="{{ scope.group ? path('money_account_share', {scope: 'me', id: '00000000-0000-0000-0000-00000000000a', group: '00000000-0000-0000-0000-00000000000b'}) }}" data-token="{{ csrf_token('form') }}">
     {% for e in errors %}<div class="flash flash-error">{{ e }}</div>{% endfor %}
     <div class="seg">
         {% for k, v in constant('App\\Money\\Entity\\Operation::TYPES') %}
@@ -72,10 +79,20 @@
         <select name="account" data-currency-source>
             {% set current = post.account ?? (o.account ? o.account.id.toRfc4122 : '') %}
             {% if o.account and o.account not in sources %}<option value="{{ o.account.id }}" data-cur="{{ o.account.currency }}" selected>{{ o.account.label }}</option>{% endif %}
-            {% for a in sources %}<option value="{{ a.id }}" data-cur="{{ a.currency }}" {{ current == a.id.toRfc4122 ? 'selected' }}>{{ a.icon }} {{ scope.group ? a.label : a.name }} · {{ a.currency }}</option>{% endfor %}
+            {% for a in sources %}<option value="{{ a.id }}" data-cur="{{ a.currency }}" data-name="{{ a.name }}" data-group="{{ a.group ? a.group.id }}" data-mine="{{ a.user == app.user ? 1 : '' }}" data-shared="{{ a.sharedWith|map(g => g.id.toRfc4122)|join(' ') }}" {{ current == a.id.toRfc4122 ? 'selected' }}>{{ a.icon }} {{ scope.group ? a.label : a.name }} · {{ a.currency }}</option>{% endfor %}
         </select>
         {% if not sources %}<a href="{{ path('money_account_new', {scope: scope.key}) }}">Сначала добавьте счёт</a>{% endif %}
     </label>
+    {% if scope.group and not recurring %}
+    <div class="hint" data-hint-topup hidden>
+        💡 Пополняете общий счёт деньгами <b>со своей карты</b>? Тогда это перевод: с карты спишется, на общий счёт придёт. «Доход» — только для новых денег извне (например, зарплата сразу на общую карту).
+        <button type="button" class="btn small" data-make-transfer>Сделать переводом</button>
+    </div>
+    <div class="hint" data-hint-unshared hidden>
+        💡 Карта «<span data-hint-account></span>» не показана группе: операция будет во «Внесено в группе», но не в «Общих деньгах» группы.
+        <button type="button" class="btn small" data-share-account>Показать карту группе</button>
+    </div>
+    {% endif %}
 
     {% if recurring %}
     <div class="fx fx-foreign" data-fx-foreign>
@@ -112,6 +129,9 @@
         </div>
     </div>
 
+    <div class="cat-chips" data-cat-chips>
+        {% for kind in ['expense', 'income'] %}{% for c in topCategories[kind] %}<button type="button" class="chip" data-chip="{{ c.id }}" data-kind="{{ kind }}">{{ c.label }}</button>{% endfor %}{% endfor %}
+    </div>
     <label data-category>Категория
         {% set cat = post.category ?? (o.category ? o.category.id.toRfc4122 : '') %}
         <select name="category">
@@ -143,6 +163,7 @@
         {% if isNew and not recurring %}<button class="btn" name="more" value="1">Сохранить и ещё</button>{% endif %}
     </div>
 </form>
+{% endif %}
 {% if not isNew and not recurring %}
 <form method="post" action="{{ path('money_operation_delete', {scope: scope.key, id: o.id}) }}" data-confirm="Удалить операцию?">
     <input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn danger">Удалить</button>

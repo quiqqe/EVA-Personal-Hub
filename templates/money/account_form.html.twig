@@ -21,6 +21,7 @@
         <small class="muted">Участники увидят баланс и операции этого счёта, а он войдёт в «Общие деньги» группы. Менять счёт сможете только вы.</small>
     </fieldset>
     {% endif %}
+    {% if return %}<input type="hidden" name="return" value="{{ return }}">{% endif %}
     <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
     <button class="btn primary wide">Сохранить</button>
 </form>

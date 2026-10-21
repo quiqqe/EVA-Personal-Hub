@@ -1,0 +1,12 @@
+{# one-tap account presets; `return` brings the person back to what they were doing #}
+{% set back = return|default(null) %}
+<div class="quick-accounts">
+    {% for p in [
+        {type: 'cash', name: 'Наличные', icon: '💵', currency: scope.currency},
+        {type: 'card', name: 'Карта', icon: '💳', currency: scope.currency},
+        {type: 'investment', name: 'Крипто-кошелёк', icon: '📈', currency: 'USDT'},
+        {type: 'savings', name: 'Копилка', icon: '🐷', currency: scope.currency},
+    ]|filter(p => only is not defined or p.type in only) %}
+        <a class="btn" href="{{ path('money_account_new', {scope: scope.key, type: p.type, currency: p.currency, name: p.name, return: back}) }}"><span>{{ p.icon }}</span>{{ p.name }}<small>{{ p.currency }}</small></a>
+    {% endfor %}
+</div>
