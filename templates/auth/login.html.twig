@@ -1,17 +1,24 @@
-{% extends 'base.html.twig' %}
+{% extends 'auth/_layout.html.twig' %}
 {% block title %}Вход — EVA{% endblock %}
-{% block header %}{% endblock %}
-{% block body %}
-<form method="post" class="card narrow auth">
-    <div class="brand-mark">E</div>
-    <h1>EVA Personal</h1>
-    <p class="lead">Личные инструменты: деньги, группы и не только</p>
-    {% if error %}<div class="flash flash-error">Неверный email или пароль</div>{% endif %}
-    <label>Email <input type="email" name="email" value="{{ email }}" required autofocus autocomplete="email"></label>
-    <label>Пароль <input type="password" name="password" required autocomplete="current-password"></label>
+{% block form %}
+<form method="post" class="auth-form">
+    <h2>С возвращением 👋</h2>
+    <p class="muted">Войдите, чтобы продолжить</p>
+    {% if error %}<div class="flash flash-error" role="alert">Неверный email или пароль</div>{% endif %}
+
+    {% if telegram_bot() %}
+        {% include '_telegram_login.html.twig' with {url: url('login_telegram')} %}
+        <div class="or"><span>или по email</span></div>
+    {% endif %}
+
+    <label for="email">Email</label>
+    <input type="email" name="email" id="email" value="{{ email }}" required autofocus autocomplete="email" inputmode="email" placeholder="you@example.com">
+
+    <label for="password">Пароль</label>
+    {% include 'auth/_password.html.twig' with {id: 'password', autocomplete: 'current-password'} %}
+
     <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
-    <button class="btn primary wide">Войти</button>
-    {% if telegram_bot() %}<div class="or"><span>или</span></div>{% include '_telegram_login.html.twig' with {url: url('login_telegram')} %}{% endif %}
-    <p class="muted center">Нет аккаунта? <a href="{{ path('register') }}">Регистрация</a></p>
+    <button class="btn primary wide auth-submit">Войти</button>
+    <p class="auth-switch">Нет аккаунта? <a href="{{ path('register') }}">Зарегистрироваться</a></p>
 </form>
 {% endblock %}

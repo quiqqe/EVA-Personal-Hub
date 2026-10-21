@@ -1,0 +1,34 @@
+{% extends 'base.html.twig' %}
+{# sign in / sign up: brand panel + form panel #}
+{% block body_class %}auth-page{% endblock %}
+{% block header %}{% endblock %}
+{% block main %}
+<div class="auth-wrap">
+    <aside class="auth-hero">
+        <div class="auth-hero-inner">
+            <a href="{{ path('login') }}" class="auth-brand"><span class="brand-mark">E</span><span>EVA Personal</span></a>
+            <h1 class="auth-title">Личные инструменты<br>в одном месте</h1>
+            <p class="auth-sub">Начинаем с денег: наличные, карты и крипта, общие траты с близкими — без таблиц и путаницы.</p>
+            <ul class="auth-features">
+                <li><span>💱</span><div><b>Любые валюты и крипта</b><small>Обмен по курсу обменника, итоги в любой валюте</small></div></li>
+                <li><span>👥</span><div><b>Семья и друзья</b><small>Общие счета, деление трат, кто кому должен</small></div></li>
+                <li><span>📊</span><div><b>Бюджеты и цели</b><small>Отчёты, регулярные платежи, импорт выписок</small></div></li>
+            </ul>
+            <div class="auth-preview" aria-hidden="true">
+                <small>Всего на счетах</small>
+                <b>1 284 950 ₽</b>
+                <div class="auth-preview-row"><span>Доходы</span><span>+215 000</span></div>
+                <div class="auth-preview-row"><span>Расходы</span><span>−96 430</span></div>
+                <div class="auth-preview-bars"><i style="height:40%"></i><i style="height:65%"></i><i style="height:50%"></i><i style="height:80%"></i><i style="height:60%"></i><i style="height:95%"></i></div>
+            </div>
+        </div>
+    </aside>
+    <main class="auth-main">
+        <div class="auth-card">
+            {% for type, messages in app.flashes %}{% for m in messages %}<div class="flash flash-{{ type }}" role="status">{{ m }}</div>{% endfor %}{% endfor %}
+            {% block form %}{% endblock %}
+        </div>
+        <p class="auth-foot">Данные хранятся на нашем сервере и никому не передаются.</p>
+    </main>
+</div>
+{% endblock %}

@@ -1,19 +1,30 @@
-{% extends 'base.html.twig' %}
+{% extends 'auth/_layout.html.twig' %}
 {% block title %}Регистрация — EVA{% endblock %}
-{% block header %}{% endblock %}
-{% block body %}
-<form method="post" class="card narrow auth">
-    <div class="brand-mark">E</div>
-    <h1>Регистрация</h1>
-    <p class="lead">Один аккаунт для всех инструментов</p>
-    {% if error %}<div class="flash flash-error">{{ error }}</div>{% endif %}
-    <label>Имя <input name="name" value="{{ app.request.request.get('name') }}" required maxlength="100" autocomplete="given-name"></label>
-    <label>Email <input type="email" name="email" value="{{ app.request.request.get('email') }}" required autocomplete="email"></label>
-    <label>Пароль <input type="password" name="password" required minlength="8" autocomplete="new-password"></label>
-    <label>Основная валюта {% include '_currency_select.html.twig' with {value: app.request.request.get('currency', 'RUB')} %}</label>
+{% block form %}
+<form method="post" class="auth-form">
+    <h2>Создать аккаунт</h2>
+    <p class="muted">Один аккаунт для всех инструментов</p>
+    {% if error %}<div class="flash flash-error" role="alert">{{ error }}</div>{% endif %}
+
+    {% if telegram_bot() %}
+        {% include '_telegram_login.html.twig' with {url: url('login_telegram')} %}
+        <div class="or"><span>или по email</span></div>
+    {% endif %}
+
+    <label for="name">Как вас зовут</label>
+    <input name="name" id="name" value="{{ app.request.request.get('name') }}" required maxlength="100" autocomplete="given-name" placeholder="Имя">
+
+    <label for="email">Email</label>
+    <input type="email" name="email" id="email" value="{{ app.request.request.get('email') }}" required autocomplete="email" inputmode="email" placeholder="you@example.com">
+
+    <label for="password">Пароль <small class="muted">— от 8 символов</small></label>
+    {% include 'auth/_password.html.twig' with {id: 'password', autocomplete: 'new-password', minlength: 8} %}
+
+    <label for="currency">Основная валюта <small class="muted">— в ней итоги, можно сменить</small></label>
+    {% include '_currency_select.html.twig' with {value: app.request.request.get('currency', 'RUB'), id: 'currency'} %}
+
     <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
-    <button class="btn primary wide">Создать аккаунт</button>
-    {% if telegram_bot() %}<div class="or"><span>или в один тап</span></div>{% include '_telegram_login.html.twig' with {url: url('login_telegram')} %}{% endif %}
-    <p class="muted center">Уже есть аккаунт? <a href="{{ path('login') }}">Войти</a></p>
+    <button class="btn primary wide auth-submit">Создать аккаунт</button>
+    <p class="auth-switch">Уже есть аккаунт? <a href="{{ path('login') }}">Войти</a></p>
 </form>
 {% endblock %}

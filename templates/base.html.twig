@@ -13,8 +13,8 @@
     <link rel="manifest" href="{{ path('manifest') }}">
     <link rel="icon" href="/icon.svg">
     <link rel="apple-touch-icon" href="/icon.svg">
-    <link rel="stylesheet" href="/app.css?v=6">
-    <script src="/app.js?v=6" defer></script>
+    <link rel="stylesheet" href="/app.css?v=8">
+    <script src="/app.js?v=7" defer></script>
 </head>
 <body class="{% block body_class %}{% endblock %}">
 {% block header %}
@@ -29,12 +29,14 @@
         </div>
     </header>
 {% endblock %}
+{% block main %}
 <main class="page">
     {% for type, messages in app.flashes %}
         {% for m in messages %}<div class="flash flash-{{ type }}" role="status">{{ m }}</div>{% endfor %}
     {% endfor %}
     {% block body %}{% endblock %}
 </main>
+{% endblock %}
 {% block nav %}{% endblock %}
 </body>
 </html>

@@ -16,6 +16,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
     document.querySelectorAll('[name=theme_choice]').forEach(r => r.addEventListener('change', () => setTheme(r.value)));
 
+    // show / hide password
+    document.querySelectorAll('[data-pw-toggle]').forEach(b => b.addEventListener('click', () => {
+        const input = document.getElementById(b.getAttribute('aria-controls'));
+        const show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        b.setAttribute('aria-pressed', String(show));
+        b.setAttribute('aria-label', show ? 'Скрыть пароль' : 'Показать пароль');
+        input.focus();
+    }));
+
     // space switcher and other <select data-nav>
     document.querySelectorAll('select[data-nav]').forEach(s => s.addEventListener('change', () => { location.href = s.value; }));
 
