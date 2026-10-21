@@ -12,6 +12,7 @@
             {% if o.toAccount %} → {{ o.toAccount.name }}{% endif %}
             {% if people %} · 👥 на {{ people }}{% endif %}
             {% if o.note %} · {{ o.note }}{% endif %}
+            {% if scope.group and o.createdBy and o.createdBy != app.user %} · внесено: {{ o.createdBy.name }}{% endif %}
         </small>
     </span>
     <span class="op-sum {{ o.type }}">

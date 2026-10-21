@@ -2,4 +2,5 @@
 <form method="get" class="in-switch" data-autosubmit>
     {% for k, v in app.request.query.all|filter((v, k) => k != 'in' and v is not iterable) %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
     <label>в {% include '_currency_select.html.twig' with {name: 'in', value: in, short: true} %}</label>
+    <noscript><button class="btn small">OK</button></noscript>
 </form>

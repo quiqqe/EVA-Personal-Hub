@@ -46,7 +46,7 @@
                     {% endif %}
                 </small>
                 <form method="post" action="{{ path('money_goal_delete', {scope: scope.key, id: g.goal.id}) }}" data-confirm="Удалить цель? Счёт и деньги останутся.">
-                    <input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn small">✕</button>
+                    <input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn small" aria-label="Удалить цель" title="Удалить цель">✕</button>
                 </form>
             </div>
         </div>
@@ -77,8 +77,8 @@
             <span class="{{ t.type }}">{{ t.type == 'income' ? '+' : (t.type == 'expense' ? '−') }}{{ t.origCurrency ? t.origAmount|money(t.origCurrency) : t.amount|money(t.account.currency) }}{% if t.origCurrency %}{% set est = convert(t.origAmount, t.origCurrency, t.account.currency) %}<br><small class="muted">{{ est is not null ? '≈ ' ~ est|money(t.account.currency, true) ~ ' по сегодняшнему курсу' : 'пересчитается по курсу дня платежа' }}</small>{% endif %}</span>
             <form method="post" action="{{ path('money_recurring_toggle', {scope: scope.key, id: t.id}) }}" class="mini-actions">
                 <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
-                <button class="btn small" title="{{ t.active ? 'Пауза' : 'Продолжить' }}">{{ t.active ? '⏸' : '▶️' }}</button>
-                <button class="btn small" name="delete" value="1" data-confirm="Удалить шаблон? Созданные операции останутся.">✕</button>
+                <button class="btn small" title="{{ t.active ? 'Пауза' : 'Продолжить' }}" aria-label="{{ t.active ? 'Поставить на паузу' : 'Продолжить' }}">{{ t.active ? '⏸' : '▶️' }}</button>
+                <button class="btn small" name="delete" value="1" aria-label="Удалить шаблон" title="Удалить" data-confirm="Удалить шаблон? Созданные операции останутся.">✕</button>
             </form>
         </div>
     {% else %}

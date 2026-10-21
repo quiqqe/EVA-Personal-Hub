@@ -28,7 +28,7 @@
 <section class="card">
     <h2>{{ title }}</h2>
     {% for row in data.rows %}
-        <a class="progress" href="{{ path('money_operations', {scope: scope.key, m: month.format('Y-m'), category: row.category.id ?? ''}) }}">
+        <a class="progress" href="{{ path('money_operations', {scope: scope.key, m: month.format('Y-m'), category: row.category ? row.category.id : 'none'}) }}">
             <div class="row"><span>{{ row.category ? row.category.label : 'Без категории' }}{% if row.foreign %} <small class="muted">· {{ row.foreign }}</small>{% endif %}</span><span>{{ row.amount|money(cur, true) }} <small class="muted">{{ (row.amount / max(1, data.total) * 100)|round }}%</small></span></div>
             {% include 'money/_bar.html.twig' with {value: row.amount, max: data.rows[0].amount, plain: true} %}
         </a>

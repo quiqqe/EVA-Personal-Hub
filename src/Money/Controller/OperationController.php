@@ -7,7 +7,9 @@ namespace App\Money\Controller;
 use App\Controller\BaseController;
 use App\Money\Entity\Operation;
 use App\Money\Ledger;
+use App\Money\Dates;
 use App\Money\Money;
+use App\Money\Rates;
 use App\Money\OperationForm;
 use App\Money\Scope;
 use Doctrine\ORM\EntityManagerInterface;
@@ -24,6 +26,7 @@ final class OperationController extends BaseController
         private readonly EntityManagerInterface $em,
         private readonly Ledger $ledger,
         private readonly OperationForm $form,
+        private readonly Rates $rates,
     ) {
     }
 
@@ -32,10 +35,18 @@ final class OperationController extends BaseController
     {
         $month = \DateTimeImmutable::createFromFormat('!Y-m', (string) $r->query->get('m')) ?: new \DateTimeImmutable('first day of this month midnight');
         $q = trim((string) $r->query->get('q'));
-        $qb = $this->ledger->operations($scope)->orderBy('o.date', \SortDirection::Descending)->addOrderBy('o.id', \SortDirection::Descending);
+        $qb = $this->ledger->operations($scope)->leftJoin('o.category', 'c')
+            ->orderBy('o.date', \SortDirection::Descending)->addOrderBy('o.id', \SortDirection::Descending);
         if ($q !== '') {
-            // search spans all time, so cap it
-            $qb->andWhere('LOWER(o.note) LIKE :q')->setParameter('q', '%'.mb_strtolower(addcslashes($q, '%_')).'%')->setMaxResults(300);
+            // search spans all time: comment, category, or the sum itself ("25000", "1 250,50")
+            $like = '%'.mb_strtolower(addcslashes($q, '%_')).'%';
+            $where = 'LOWER(o.note) LIKE :q OR LOWER(c.name) LIKE :q';
+            $sum = Money::parse($q, 'RUB');
+            if ($sum !== null && $sum > 0) {
+                $where .= ' OR o.amount = :sum OR o.origAmount = :sum';
+                $qb->setParameter('sum', $sum);
+            }
+            $qb->andWhere($where)->setParameter('q', $like)->setMaxResults(500);
         } else {
             $qb->andWhere('o.date >= :from AND o.date < :to')
                 ->setParameter('from', $month, 'date_immutable')->setParameter('to', $month->modify('+1 month'), 'date_immutable');
@@ -57,18 +68,39 @@ final class OperationController extends BaseController
         }
         if (Uuid::isValid($filters['category'])) {
             $qb->andWhere('o.category = :cat')->setParameter('cat', $filters['category']);
+        } elseif ($filters['category'] === 'none') {
+            $qb->andWhere('o.category IS NULL AND o.type != :tr')->setParameter('tr', 'transfer');
         }
         if (\array_key_exists($filters['type'], Operation::TYPES)) {
             $qb->andWhere('o.type = :type')->setParameter('type', $filters['type']);
         }
-        $days = [];
+        // totals of what's listed, in the space's display currency, each at its own day's rate
+        $in = DashboardController::displayCurrency($r, $scope);
+        $days = $dayNet = [];
+        $sum = ['income' => 0, 'expense' => 0, 'count' => 0, 'missing' => []];
         foreach ($qb->getQuery()->getResult() as $o) {
-            $days[$o->date->format('Y-m-d')][] = $o;
+            $day = $o->date->format('Y-m-d');
+            $days[$day][] = $o;
+            ++$sum['count'];
+            if ($o->type === 'transfer') {
+                continue;
+            }
+            $v = $this->rates->convert($scope->group ? $o->amount : ($o->accountAmount ?? $o->amount), $o->currency, $in, $o->date);
+            if ($v === null) {
+                $sum['missing'][] = $o->currency;
+                continue;
+            }
+            $sum[$o->type] += $v;
+            $dayNet[$day] = ($dayNet[$day] ?? 0) + ($o->type === 'income' ? $v : -$v);
         }
+        $sum['missing'] = array_values(array_unique($sum['missing']));
 
         return $this->render('money/operations.html.twig', [
             'scope' => $scope,
             'days' => $days,
+            'dayNet' => $dayNet,
+            'sum' => $sum,
+            'in' => $in,
             'month' => $month,
             'q' => $q,
             'filters' => $filters,
@@ -97,6 +129,8 @@ final class OperationController extends BaseController
         }
         if (!$id) {
             $o->type = \array_key_exists((string) $r->query->get('type'), Operation::TYPES) ? (string) $r->query->get('type') : 'expense';
+            // "save and add another" keeps the day
+            $o->date = Dates::parse((string) $r->query->get('date')) ?? $o->date;
             // ?account= from an account's card, otherwise the account used last
             $o->account = null;
             foreach ($this->ledger->sourceAccounts($scope) as $a) {
@@ -117,9 +151,13 @@ final class OperationController extends BaseController
                 $this->em->flush();
                 $this->addFlash('ok', $id ? 'Сохранено' : 'Добавлено: '.Money::format($o->amount, $o->currency));
 
-                return $r->request->getBoolean('more')
-                    ? $this->redirectToRoute('money_operation_new', ['scope' => $scope->key(), 'type' => $o->type])
-                    : $this->redirectToRoute('money_operations', ['scope' => $scope->key(), 'm' => $o->date->format('Y-m')]);
+                if ($r->request->getBoolean('more')) {
+                    return $this->redirectToRoute('money_operation_new', ['scope' => $scope->key(), 'type' => $o->type, 'date' => $o->date->format('Y-m-d'), 'account' => $o->account?->id, 'back' => $r->request->get('back')]);
+                }
+                // back to where the person came from (an account's card, the dashboard), else the month's list
+                $back = AccountController::localPath((string) $r->request->get('back'));
+
+                return $back ? $this->redirect($back) : $this->redirectToRoute('money_operations', ['scope' => $scope->key(), 'm' => $o->date->format('Y-m')]);
             }
         }
 
@@ -129,6 +167,8 @@ final class OperationController extends BaseController
             'isNew' => !$id,
             'errors' => $errors,
             'post' => $r->request->all(),
+            // where to return after saving: the page the form was opened from
+            'back' => self::backTo($r),
         ]);
     }
 
@@ -182,6 +222,16 @@ final class OperationController extends BaseController
         return $response;
     }
 
+    /** The page the form was opened from (never another operation form), to return to after saving. */
+    private static function backTo(Request $r): ?string
+    {
+        $ref = (string) $r->headers->get('referer');
+        $fromReferer = $ref ? parse_url($ref, PHP_URL_PATH).(($qs = parse_url($ref, PHP_URL_QUERY)) ? '?'.$qs : '') : '';
+        $back = AccountController::localPath((string) ($r->request->get('back') ?? $r->query->get('back') ?? $fromReferer));
+
+        return $back && !preg_match('#/operations/(new|[0-9a-f-]{36})#', $back) ? $back : null;
+    }
+
     /** A cell starting with = + - @ is a formula to Excel: names and notes become plain text, numbers stay numbers. */
     private static function safeCell(mixed $v): string
     {
@@ -205,7 +255,16 @@ final class OperationController extends BaseController
     {
         $last = $this->ledger->operations($scope)->andWhere('o.createdBy = :me AND a.archived = false')->setParameter('me', $scope->me)
             ->orderBy('o.id', \SortDirection::Descending)->setMaxResults(1)->getQuery()->getOneOrNullResult();
+        if ($last?->account) {
+            return $last->account;
+        }
+        // in a group, the first entry goes to the group's own account rather than a personal card
+        foreach ($scope->group ? $this->ledger->sourceAccounts($scope) : [] as $a) {
+            if ($a->group === $scope->group) {
+                return $a;
+            }
+        }
 
-        return $last?->account;
+        return null;
     }
 }

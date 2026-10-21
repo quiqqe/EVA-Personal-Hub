@@ -50,8 +50,10 @@ final class HubController extends BaseController
             if ($name !== '' && mb_strlen($name) <= 100) {
                 $me->name = $name;
             }
-            if (isset(Money::choices()[$currency])) {
+            if (isset(Money::choices()[$currency]) && $currency !== $me->currency) {
                 $me->currency = $currency;
+                // totals switch to the new base right away
+                $r->getSession()->remove('money_in_me');
             }
             $tz = (string) $r->request->get('timezone');
             if ($tz === 'auto') {

@@ -23,9 +23,14 @@
     {% for e in errors %}<div class="flash flash-error">{{ e }}</div>{% endfor %}
     <div class="seg">
         {% for k, v in constant('App\\Money\\Entity\\Operation::TYPES') %}
-            <label><input type="radio" name="type" value="{{ k }}" {{ (post.type ?? o.type) == k ? 'checked' }}><span>{{ v }}</span></label>
+            <label><input type="radio" name="type" value="{{ k }}" {{ (post.type ?? o.type) == k ? 'checked' }}><span>{{ k == 'transfer' ? 'Перевод / обмен' : v }}</span></label>
         {% endfor %}
     </div>
+    <p class="type-hint" data-type-hint>
+        <span data-for="expense">Деньги ушли со счёта: покупка, оплата, подписка.</span>
+        <span data-for="income">Новые деньги извне: зарплата, подарок, кэшбэк. Перекладываете со своего же счёта — это перевод.</span>
+        <span data-for="transfer">Деньги переходят между счетами: снять наличные, пополнить копилку, обменять валюту (в т. ч. крипту). Не доход и не расход. Комиссию запишите отдельным расходом.</span>
+    </p>
 
     {# the sum as it was paid/received; its currency may differ from the account's #}
     {% set enteredCur = post.amount_currency ?? o.origCurrency ?? (o.account ? o.account.currency : null) %}
@@ -167,6 +172,8 @@
 
     <label>Комментарий <input name="note" maxlength="255" value="{{ post.note ?? o.note }}" placeholder="Необязательно"></label>
 
+    {% if back %}<input type="hidden" name="back" value="{{ back }}">{% endif %}
+    {% if o.createdBy and o.createdBy != app.user %}<p class="muted small">Внесено: {{ o.createdBy.name }}</p>{% endif %}
     <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
     <div class="actions">
         <button class="btn primary">Сохранить</button>

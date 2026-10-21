@@ -25,14 +25,23 @@
     <a href="{{ path('money_operations', base|merge({m: month.modify('+1 month').format('Y-m')})) }}" aria-label="Следующий месяц">›</a>
 </div>
 <form class="filters" method="get" data-autosubmit>
+    <noscript><button class="btn small">Показать</button></noscript>
     <input type="hidden" name="m" value="{{ month.format('Y-m') }}">
-    <input type="search" name="q" value="{{ q }}" placeholder="🔍 Поиск по комментарию">
+    <input type="search" name="q" value="{{ q }}" placeholder="🔍 Комментарий, категория или сумма">
     <select name="account"><option value="">Все счета</option>{% for a in accounts %}<option value="{{ a.id }}" {{ filters.account == a.id.toRfc4122 ? 'selected' }}>{{ a.name }}</option>{% endfor %}</select>
-    <select name="category"><option value="">Все категории</option>{% for c in categories %}<option value="{{ c.id }}" {{ filters.category == c.id.toRfc4122 ? 'selected' }}>{{ c.label }}</option>{% endfor %}</select>
+    <select name="category"><option value="">Все категории</option><option value="none" {{ filters.category == 'none' ? 'selected' }}>Без категории</option>{% for c in categories %}<option value="{{ c.id }}" {{ filters.category == c.id.toRfc4122 ? 'selected' }}>{{ c.label }}</option>{% endfor %}</select>
     <select name="type"><option value="">Все типы</option>{% for k, v in constant('App\\Money\\Entity\\Operation::TYPES') %}<option value="{{ k }}" {{ filters.type == k ? 'selected' }}>{{ v }}</option>{% endfor %}</select>
 </form>
+{% if sum.count %}
+<div class="list-sum">
+    <span>{{ sum.count }} {{ sum.count % 10 == 1 and sum.count % 100 != 11 ? 'операция' : (sum.count % 10 in [2,3,4] and sum.count % 100 not in [12,13,14] ? 'операции' : 'операций') }}{{ q ? ' найдено' }}</span>
+    {% if sum.income %}<b class="income">+{{ sum.income|money(in, true) }}</b>{% endif %}
+    {% if sum.expense %}<b class="expense">−{{ sum.expense|money(in, true) }}</b>{% endif %}
+    {% if sum.missing %}<small class="muted">без учёта {{ sum.missing|join(', ') }}</small>{% endif %}
+</div>
+{% endif %}
 {% for day, ops in days %}
-    <h3 class="day">{{ day|date('d.m.Y, D')|replace({Mon: 'пн', Tue: 'вт', Wed: 'ср', Thu: 'чт', Fri: 'пт', Sat: 'сб', Sun: 'вс'}) }}</h3>
+    <h3 class="day"><span>{{ day|date('d.m.Y, D')|replace({Mon: 'пн', Tue: 'вт', Wed: 'ср', Thu: 'чт', Fri: 'пт', Sat: 'сб', Sun: 'вс'}) }}</span>{% if dayNet[day] is defined and dayNet[day] != 0 %}<span class="{{ dayNet[day] > 0 ? 'income' : 'expense' }}">{{ dayNet[day] > 0 ? '+' : '−' }}{{ (dayNet[day]|abs)|money(in, true) }}</span>{% endif %}</h3>
     <section class="card">{% for o in ops %}{% include 'money/_op.html.twig' %}{% endfor %}</section>
 {% else %}
     <p class="muted center">Операций нет</p>

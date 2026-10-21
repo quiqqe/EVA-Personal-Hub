@@ -57,8 +57,9 @@ final class GroupController extends BaseController
             if ($name !== '' && mb_strlen($name) <= 100) {
                 $g->name = $name;
             }
-            if (isset(Money::choices()[(string) $r->request->get('currency')])) {
+            if (isset(Money::choices()[(string) $r->request->get('currency')]) && $r->request->get('currency') !== $g->currency) {
                 $g->currency = (string) $r->request->get('currency');
+                $r->getSession()->remove('money_in_'.$g->id);
             }
             $this->em->flush();
             $this->addFlash('ok', 'Сохранено');

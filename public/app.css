@@ -515,3 +515,11 @@ fieldset.share .check { margin: var(--s2) 0; }
 .basis-seg { grid-template-columns: 1fr 1fr; margin-bottom: var(--s2); }
 .basis-seg a { display: block; text-align: center; padding: 10px 4px; border-radius: 11px; color: var(--muted); font-weight: 650; }
 .basis-seg a.on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
+
+.type-hint { margin: -10px 0 var(--s4); font-size: 13px; color: var(--muted); }
+.list-sum { display: flex; flex-wrap: wrap; gap: var(--s3); align-items: baseline; padding: var(--s3) var(--s4); margin-bottom: var(--s2); border-radius: var(--r); background: var(--surface); border: 1px solid var(--line); font-size: 14px; }
+.list-sum span { color: var(--muted); margin-right: auto; }
+.day { display: flex; justify-content: space-between; }
+.day span:last-child { font-variant-numeric: tabular-nums; }
+
+.hub-banner { display: block; margin: 0 0 var(--s4); color: var(--ink-2); }

@@ -15,6 +15,7 @@
     <p class="tg-fallback muted">Нет приложения? <a href="{{ web }}" target="_blank" rel="noopener">Открыть в веб-версии</a></p>
 
     <p class="tg-status" data-tg-status aria-live="polite"><span class="spinner" aria-hidden="true"></span> Ждём подтверждения в Telegram…</p>
+    <a class="btn wide" href="{{ linking ? path('profile_telegram_link') : path('login_telegram') }}" data-tg-retry hidden>Попробовать снова</a>
     <p class="auth-switch"><a href="{{ linking ? path('profile') : path('login') }}">← Назад</a></p>
 </div>
 {% endblock %}

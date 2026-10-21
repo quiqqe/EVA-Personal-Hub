@@ -5,7 +5,7 @@
     <h2>С возвращением 👋</h2>
     <p class="muted">Войдите, чтобы продолжить</p>
     {% if invitedTo %}<div class="flash flash-ok">👥 Вы вступаете в группу «{{ invitedTo.name }}» — войдите или зарегистрируйтесь, и сразу попадёте туда.</div>{% endif %}
-    {% if error %}<div class="flash flash-error" role="alert">Неверный email или пароль</div>{% endif %}
+    {% if error %}<div class="flash flash-error" role="alert">{{ error.messageKey starts with 'Too many' ? 'Слишком много попыток входа — подождите минуту и попробуйте снова.' : 'Неверный email или пароль' }}</div>{% endif %}
 
     {% if telegram_bot() %}
         {% include '_telegram_button.html.twig' with {href: path('login_telegram')} %}

@@ -10,8 +10,8 @@
             <input type="hidden" name="id" value="{{ c.id }}">
             <input name="icon" value="{{ c.icon }}" class="emoji" maxlength="4" aria-label="Иконка">
             <input name="name" value="{{ c.name }}" required maxlength="100" aria-label="Название">
-            <button class="btn small">💾</button>
-            <button class="btn small" name="archive" value="1" title="{{ c.archived ? 'Вернуть' : 'В архив' }}">{{ c.archived ? '↩︎' : '🗄' }}</button>
+            <button class="btn small" aria-label="Сохранить" title="Сохранить">💾</button>
+            <button class="btn small" name="archive" value="1" title="{{ c.archived ? 'Вернуть' : 'В архив' }}" aria-label="{{ c.archived ? 'Вернуть из архива' : 'В архив' }}">{{ c.archived ? '↩︎' : '🗄' }}</button>
         </form>
     {% endfor %}
     <form method="post" class="cat-row">
@@ -19,7 +19,7 @@
         <input type="hidden" name="kind" value="{{ kind }}">
         <input name="icon" class="emoji" maxlength="4" placeholder="🙂" aria-label="Иконка">
         <input name="name" required maxlength="100" placeholder="Новая категория" aria-label="Название">
-        <button class="btn small primary">＋</button>
+        <button class="btn small primary" aria-label="Добавить категорию">＋</button>
     </form>
 </section>
 {% endfor %}

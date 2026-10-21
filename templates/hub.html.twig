@@ -5,6 +5,9 @@
     <p class="muted">Все ваши инструменты — в одном месте.</p>
 </div>
 
+{% if telegram_bot() and not app.user.telegramId %}
+<a class="hint hub-banner" href="{{ path('profile') }}">📲 Привяжите Telegram в профиле — вход в один тап и восстановление пароля, если забудете.</a>
+{% endif %}
 <div class="tiles">
     <a class="tile featured" href="{{ path('money', {scope: 'me'}) }}">
         <span class="tile-icon">💰</span>

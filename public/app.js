@@ -190,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const r = await (await fetch(wait.dataset.check, {headers: {Accept: 'application/json'}, credentials: 'same-origin'})).json();
                 if (r.status === 'ok') { done = true; status.textContent = '✅ Готово, входим…'; location.href = r.redirect; }
-                if (r.status === 'expired') { done = true; status.textContent = 'Время ожидания вышло — начните заново.'; }
+                if (r.status === 'expired') { done = true; status.textContent = 'Ссылка устарела (10 минут) — начните заново.'; wait.querySelector('[data-tg-retry]').hidden = false; }
             } catch (e) { /* network hiccup: try again on the next tick */ }
         };
         setInterval(check, 2000);
@@ -201,10 +201,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // space switcher and other <select data-nav>
     document.querySelectorAll('select[data-nav]').forEach(s => s.addEventListener('change', () => { location.href = s.value; }));
 
-    // confirmation on destructive forms / buttons
+    // confirmation on destructive forms / buttons; a second tap while the page is sending does nothing (no duplicates)
     document.addEventListener('submit', e => {
         const btn = e.submitter, msg = btn?.dataset.confirm || e.target.dataset.confirm;
-        if (msg && !confirm(msg)) e.preventDefault();
+        if (msg && !confirm(msg)) { e.preventDefault(); return; }
+        if (e.target.method === 'post') {
+            if (e.target.dataset.sending) { e.preventDefault(); return; }
+            e.target.dataset.sending = '1';
+            setTimeout(() => { delete e.target.dataset.sending; }, 8000);
+        }
     });
 
     // filters and import mapping apply on change
@@ -267,6 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const update = () => {
         const type = form.querySelector('[name=type]:checked').value;
+        form.querySelectorAll('[data-type-hint] [data-for]').forEach(h => { h.hidden = h.dataset.for !== type; });
         form.querySelectorAll('[data-show]').forEach(el => show(el, el.dataset.show === type));
         show($('[data-category]'), type !== 'transfer');
 

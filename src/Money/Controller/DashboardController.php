@@ -72,6 +72,7 @@ final class DashboardController extends BaseController
             'budgets' => self::budgets($scope, $em, $ledger),
             'goals' => $this->goals($scope, $em, $ledger),
             'debts' => $scope->group ? $ledger->debts($scope->group) : [],
+            'groupDebts' => $scope->group ? [] : self::myGroupDebts($scope, $ledger),
             'recent' => $ledger->operations($scope)->orderBy('o.date', \SortDirection::Descending)->addOrderBy('o.id', \SortDirection::Descending)
                 ->setMaxResults(10)->getQuery()->getResult(),
         ]);
@@ -90,6 +91,30 @@ final class DashboardController extends BaseController
                 $sum += $row['category'] === $b->category ? $row['amount'] : 0;
             }
             $out[] = ['budget' => $b, 'spent' => $sum, 'missing' => $spent[$b->currency]['missing']];
+        }
+
+        return $out;
+    }
+
+    /**
+     * In my personal space: what I'm owed or owe in each of my groups.
+     *
+     * @return list<array{group: \App\Entity\Group, amounts: array<string, int>}>
+     */
+    private static function myGroupDebts(Scope $scope, Ledger $ledger): array
+    {
+        $out = [];
+        foreach ($ledger->groupsOf($scope->me) as $g) {
+            $amounts = [];
+            foreach ($ledger->debts($g) as $cur => $d) {
+                $v = $d['net'][(string) $scope->me->id] ?? 0;
+                if ($v !== 0) {
+                    $amounts[$cur] = $v;
+                }
+            }
+            if ($amounts) {
+                $out[] = ['group' => $g, 'amounts' => $amounts];
+            }
         }
 
         return $out;

@@ -1,6 +1,7 @@
 {% extends 'money/layout.html.twig' %}
 {% block body %}
 <h1>{{ isNew ? 'Новый счёт' : account.name }}</h1>
+{% if scope.group and isNew %}<p class="hint">👥 Это <b>общий счёт группы «{{ scope.group.name }}»</b>: его видят и меняют все участники (копилка, общая карта). Свою личную карту добавьте в «Личном» — и при желании покажите группе.</p>{% endif %}
 <form method="post" class="card">
     {% if error %}<div class="flash flash-error">{{ error }}</div>{% endif %}
     <label>Название <input name="name" value="{{ account.name }}" required maxlength="100" placeholder="Кошелёк, Тинькофф, Копилка…" {{ isNew ? 'autofocus' }}></label>

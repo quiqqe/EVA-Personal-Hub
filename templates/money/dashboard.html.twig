@@ -29,7 +29,7 @@
 <div class="quick">
     <a class="btn expense" href="{{ path('money_operation_new', {scope: scope.key, type: 'expense'}) }}"><span>−</span>Расход</a>
     <a class="btn income" href="{{ path('money_operation_new', {scope: scope.key, type: 'income'}) }}"><span>+</span>Доход</a>
-    <a class="btn" href="{{ path('money_operation_new', {scope: scope.key, type: 'transfer'}) }}"><span>⇄</span>Обмен</a>
+    <a class="btn" href="{{ path('money_operation_new', {scope: scope.key, type: 'transfer'}) }}"><span>⇄</span>Перевод / обмен</a>
 </div>
 
 <section class="card">
@@ -52,14 +52,26 @@
     </div>
 </section>
 
-{% if debts %}
+{% if scope.group %}
 <section class="card">
-    <div class="card-head"><h2>Долги в группе</h2><a href="{{ path('money_debts', {scope: scope.key}) }}">подробнее</a></div>
+    <div class="card-head"><h2>Долги в группе</h2><a href="{{ path('money_debts', {scope: scope.key}) }}">открыть</a></div>
     {% for c, d in debts %}
         {% set mine = d.net[app.user.id.toRfc4122] ?? 0 %}
         {% if mine > 0 %}<p>Вам должны <b class="income">{{ mine|money(c) }}</b></p>
         {% elseif mine < 0 %}<p>Вы должны <b class="expense">{{ (-mine)|money(c) }}</b></p>
         {% else %}<p class="muted">В {{ c }} вы в расчёте</p>{% endif %}
+    {% else %}
+        <p class="muted">Все в расчёте. Разделить трату: при вводе расхода отметьте «👥 Разделить».</p>
+    {% endfor %}
+</section>
+{% elseif groupDebts %}
+<section class="card">
+    <div class="card-head"><h2>Долги в группах</h2></div>
+    {% for gd in groupDebts %}
+        <a class="row" href="{{ path('money_debts', {scope: gd.group.id}) }}">
+            <span>👥 {{ gd.group.name }}</span>
+            <span>{% for c, v in gd.amounts %}<b class="{{ v > 0 ? 'income' : 'expense' }}">{{ v > 0 ? 'вам должны ' : 'вы должны ' }}{{ (v|abs)|money(c) }}</b>{{ not loop.last ? ' · ' }}{% endfor %}</span>
+        </a>
     {% endfor %}
 </section>
 {% endif %}
