@@ -40,7 +40,10 @@ final class Csv
      *
      * @param list<string> $header
      *
-     * @return array{date: ?int, amount: ?int, note: ?int, category: ?int}
+     * amount — in the account's currency (T-Bank: «Сумма платежа»); orig_* — the purchase's own currency
+     * (T-Bank: «Сумма операции» / «Валюта операции»), set for purchases abroad.
+     *
+     * @return array{date: ?int, amount: ?int, note: ?int, category: ?int, orig_amount: ?int, orig_currency: ?int}
      */
     public static function guess(array $header): array
     {
@@ -58,9 +61,11 @@ final class Csv
 
         return [
             'date' => $find(['/^дата операции/u', '/дата/u', '/date/']),
-            'amount' => $find(['/^сумма операции$/u', '/^сумма платежа$/u', '/сумма/u', '/amount|sum/']),
+            'amount' => $find(['/^сумма платежа$/u', '/^сумма операции$/u', '/сумма/u', '/amount|sum/']),
             'note' => $find(['/описание/u', '/назначение/u', '/description|memo|payee/', '/комментарий/u']),
             'category' => $find(['/^категория/u', '/category/']),
+            'orig_amount' => \in_array(true, array_map(fn ($h) => mb_strtolower($h) === 'сумма платежа', $header), true) ? $find(['/^сумма операции$/u']) : null,
+            'orig_currency' => $find(['/^валюта операции$/u', '/original currency/']),
         ];
     }
 

@@ -3,7 +3,7 @@
 <h1>Проверьте колонки</h1>
 <form method="post" class="card stack">
     <label>Счёт <select name="account" data-autosubmit-field>{% for a in accounts %}<option value="{{ a.id }}" {{ account == a ? 'selected' }}>{{ a.name }} · {{ a.currency }}</option>{% endfor %}</select></label>
-    {% for key, label in {date: 'Дата', amount: 'Сумма', note: 'Описание', category: 'Категория банка'} %}
+    {% for key, label in {date: 'Дата', amount: 'Сумма (в валюте счёта)', note: 'Описание', category: 'Категория банка', orig_currency: 'Валюта покупки (если бывает другая)', orig_amount: 'Сумма в валюте покупки'} %}
         <label>{{ label }}
             <select name="{{ key }}" data-autosubmit-field>
                 <option value="">—</option>

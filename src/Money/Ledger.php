@@ -238,6 +238,11 @@ final class Ledger
                     $o->account = $r->account;
                     $o->amount = $r->amount;
                     $o->currency = $r->account->currency;
+                    if ($r->origCurrency !== null) {
+                        $o->origAmount = $r->origAmount;
+                        $o->origCurrency = $r->origCurrency;
+                        $o->amount = $this->rates->convert((int) $r->origAmount, $r->origCurrency, $o->currency, $r->nextDate) ?? $r->amount;
+                    }
                     $o->toAccount = $r->toAccount;
                     $o->toAmount = $r->toAmount;
                     $o->category = $r->category;

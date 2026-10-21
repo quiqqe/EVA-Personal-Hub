@@ -30,6 +30,13 @@ class Recurring
     #[ORM\Column(type: 'bigint')]
     public int $amount = 0;
 
+    /** In another currency than the account's (salary in USDT onto an AMD card): converted at each payment day's rate */
+    #[ORM\Column(type: 'bigint', nullable: true)]
+    public ?int $origAmount = null;
+
+    #[ORM\Column(length: 10, nullable: true)]
+    public ?string $origCurrency = null;
+
     #[ORM\ManyToOne, ORM\JoinColumn(onDelete: 'CASCADE')]
     public ?Account $toAccount = null;
 

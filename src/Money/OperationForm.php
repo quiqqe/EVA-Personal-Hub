@@ -59,17 +59,20 @@ final class OperationForm
 
         // a sum in another currency than the account's: salary in USDT onto an AMD card, a card payment in EUR
         $entered = (string) $p->get('amount_currency');
-        $foreign = $t instanceof Operation && $t->type !== 'transfer' && $t->account !== null
+        $foreign = $t->type !== 'transfer' && $t->account !== null
             && $entered !== '' && $entered !== $currency && isset(Money::choices()[$entered]);
         $amount = Money::parse((string) $p->get('amount'), $foreign ? $entered : $currency);
         if ($amount === null || $amount <= 0) {
             $errors[] = 'Введите сумму больше нуля';
         }
         $t->amount = (int) $amount;
-        if ($t instanceof Operation) {
-            $t->origAmount = $t->origCurrency = null;
-        }
-        if ($foreign && $amount > 0) {
+        $t->origAmount = $t->origCurrency = null;
+        if ($foreign && $amount > 0 && $t instanceof Recurring) {
+            // a template has no rate yet: each payment is converted at its own day's market rate
+            $t->origAmount = $amount;
+            $t->origCurrency = $entered;
+            $t->amount = $this->rates->convert($amount, $entered, $currency) ?? 0;
+        } elseif ($foreign && $amount > 0) {
             $on = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $p->get('date')) ?: new \DateTimeImmutable('today');
             $credited = Fx::amount(
                 $amount, $entered, $currency,

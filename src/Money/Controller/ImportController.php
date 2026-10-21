@@ -10,6 +10,7 @@ use App\Money\Entity\Account;
 use App\Money\Entity\Operation;
 use App\Money\Ledger;
 use App\Money\Money;
+use App\Money\Rates;
 use App\Money\Scope;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -35,7 +36,7 @@ final class ImportController extends BaseController
         'проценты' => 'Проценты и кэшбэк', 'кэшбэк' => 'Проценты и кэшбэк', 'зарплата' => 'Зарплата',
     ];
 
-    public function __construct(private readonly EntityManagerInterface $em, private readonly Ledger $ledger)
+    public function __construct(private readonly EntityManagerInterface $em, private readonly Ledger $ledger, private readonly Rates $rates)
     {
     }
 
@@ -143,6 +144,7 @@ final class ImportController extends BaseController
             $o->amount = abs($amount);
             $o->note = mb_substr($cols['note'] !== null ? ($row[$cols['note']] ?? '') : '', 0, 255);
             $o->group = $scope->group;
+            $this->foreign($o, $row, $cols, $invert);
             $bankCategory = $cols['category'] !== null ? mb_strtolower($row[$cols['category']] ?? '') : '';
             $o->category = $byNote[$o->type][mb_strtolower($o->note)]
                 ?? $byName[$o->type][$bankCategory]
@@ -156,6 +158,37 @@ final class ImportController extends BaseController
         }
 
         return $out;
+    }
+
+    /**
+     * A purchase in another currency than the account's: keep its own sum; when the statement has only that sum,
+     * the account's sum is converted at the rate of the day.
+     *
+     * @param list<string>            $row
+     * @param array<string, int|null> $cols
+     */
+    private function foreign(Operation $o, array $row, array $cols, bool $invert): void
+    {
+        $cur = strtoupper(trim($cols['orig_currency'] !== null ? ($row[$cols['orig_currency']] ?? '') : ''));
+        $cur = $cur === 'RUR' ? 'RUB' : $cur;   // banks still write the old code
+        if ($cur === '' || $cur === $o->currency || !isset(Money::choices()[$cur])) {
+            return;
+        }
+        if ($cols['orig_amount'] !== null) {
+            $orig = Money::parse($row[$cols['orig_amount']] ?? '', $cur);
+        } else {
+            // the only sum column is in the purchase's currency
+            $orig = Money::parse($row[$cols['amount']] ?? '', $cur);
+            $converted = $orig !== null ? $this->rates->convert(abs($orig), $cur, $o->currency, $o->date) : null;
+            if ($converted === null) {
+                return;
+            }
+            $o->amount = $converted;
+        }
+        if ($orig) {
+            $o->origAmount = abs($orig);
+            $o->origCurrency = $cur;
+        }
     }
 
     /**

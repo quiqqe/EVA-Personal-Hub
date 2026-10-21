@@ -153,7 +153,11 @@ final class MoneyLogicTest extends TestCase
         $rows = Csv::rows($csv);
         self::assertCount(2, $rows);
         self::assertSame('Пятёрочка; у дома', $rows[1][4]);
-        self::assertSame(['date' => 0, 'amount' => 2, 'note' => 4, 'category' => 3], Csv::guess($rows[0]));
+        self::assertSame(['date' => 0, 'amount' => 2, 'note' => 4, 'category' => 3, 'orig_amount' => null, 'orig_currency' => null], Csv::guess($rows[0]));
+
+        // T-Bank full export: the account's sum is «Сумма платежа», the purchase's own one is «Сумма операции»
+        $tbank = ['Дата операции', 'Дата платежа', 'Номер карты', 'Статус', 'Сумма операции', 'Валюта операции', 'Сумма платежа', 'Валюта платежа', 'Категория', 'Описание'];
+        self::assertSame(['date' => 0, 'amount' => 6, 'note' => 9, 'category' => 8, 'orig_amount' => 4, 'orig_currency' => 5], Csv::guess($tbank));
         self::assertSame('2026-10-20', Csv::date($rows[1][0])?->format('Y-m-d'));
         self::assertNull(Csv::date('вчера'));
     }

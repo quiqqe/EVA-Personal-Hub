@@ -21,17 +21,16 @@
     </div>
 
     {# the sum as it was paid/received; its currency may differ from the account's #}
-    {% set enteredCur = recurring ? null : (post.amount_currency ?? o.origCurrency ?? (o.account ? o.account.currency : null)) %}
-    {% set enteredAmount = recurring ? (o.amount ? o.amount|money_input(o.account.currency) : '') : (o.origAmount is not null ? o.origAmount|money_input(o.origCurrency) : (o.amount ? o.amount|money_input(o.currency) : '')) %}
+    {% set enteredCur = post.amount_currency ?? o.origCurrency ?? (o.account ? o.account.currency : null) %}
+    {% set accCur = o.account ? o.account.currency : scope.currency %}
+    {% set enteredAmount = o.origAmount is not null ? o.origAmount|money_input(o.origCurrency) : (o.amount ? o.amount|money_input(accCur) : '') %}
     <div class="amount-row">
         <label class="amount">Сумма
             <input name="amount" inputmode="decimal" autocomplete="off" required value="{{ post.amount ?? enteredAmount }}" placeholder="0" {{ isNew ? 'autofocus' }}>
         </label>
-        {% if not recurring %}
         <label class="amount-cur" data-amount-cur>Валюта
             {% include '_currency_select.html.twig' with {name: 'amount_currency', value: enteredCur ?? scope.currency, short: true} %}
         </label>
-        {% endif %}
     </div>
     <small class="muted amount-hint">Можно считать: 250+120. Валюта может отличаться от валюты счёта — пересчитаем по курсу.</small>
 
@@ -78,7 +77,11 @@
         {% if not sources %}<a href="{{ path('money_account_new', {scope: scope.key}) }}">Сначала добавьте счёт</a>{% endif %}
     </label>
 
-    {% if not recurring %}
+    {% if recurring %}
+    <div class="fx fx-foreign" data-fx-foreign>
+        <small class="muted fx-hint">Каждый платёж пересчитается в валюту счёта по рыночному курсу на его дату. Реальный курс можно потом поправить в самой операции.</small>
+    </div>
+    {% else %}
     <div class="fx fx-foreign" data-fx-foreign>
         <label>Курс <small class="muted" data-fx-rate-label></small>
             <input name="fx_rate" inputmode="decimal" autocomplete="off" data-fx-rate2 value="{{ post.fx_rate ?? '' }}">

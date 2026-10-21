@@ -66,7 +66,7 @@ final class DashboardController extends BaseController
             'budgets' => self::budgets($scope, $em, $ledger),
             'goals' => $this->goals($scope, $em, $ledger),
             'debts' => $scope->group ? $ledger->debts($scope->group) : [],
-            'recent' => $ledger->operations($scope)->orderBy('o.date', 'DESC')->addOrderBy('o.id', 'DESC')
+            'recent' => $ledger->operations($scope)->orderBy('o.date', \SortDirection::Descending)->addOrderBy('o.id', \SortDirection::Descending)
                 ->setMaxResults(10)->getQuery()->getResult(),
         ]);
     }

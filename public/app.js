@@ -288,8 +288,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const rateIn = $('[data-fx-rate2]'), credIn = $('[data-fx-credited]'), dateIn = $('[name=date]');
         const money = x => +x.toFixed(Math.abs(x) >= 1 ? 2 : 8);
         let lastAcc = cur('[data-currency-source]');
-        let manual = !!(rateIn.value || credIn.value);   // an existing foreign operation keeps its own numbers
-        const recalc = () => { const r = num(rateIn.value), a = sum(amount.value); if (r > 0 && a > 0) credIn.value = money(a * r); };
+        // recurring templates have no rate inputs: each payment uses its own day's market rate
+        let manual = !rateIn || !!(rateIn.value || credIn.value);   // an existing foreign operation keeps its own numbers
+        const recalc = () => { if (!rateIn) return; const r = num(rateIn.value), a = sum(amount.value); if (r > 0 && a > 0) credIn.value = money(a * r); };
         const fetchRate = async () => {
             const from = amtCur.value, to = cur('[data-currency-source]');
             if (!from || !to || from === to || manual) return;
@@ -309,20 +310,22 @@ document.addEventListener('DOMContentLoaded', () => {
             show($('[data-amount-cur]'), type !== 'transfer' && accountShown);
             const foreign = type !== 'transfer' && accountShown && !!acc && amtCur.value !== acc;
             show(fxBox, foreign);
-            if (foreign) {
+            if (foreign && rateIn) {
                 $('[data-fx-rate-label]').textContent = `${acc} за 1 ${amtCur.value}`;
                 $('[data-fx-acc-cur]').textContent = `(${acc})`;
                 $('[data-fx-credited-label]').textContent = type === 'income' ? 'На счёт поступило' : 'Со счёта списано';
                 if (!rateIn.value) fetchRate();
             }
         };
-        rateIn.addEventListener('input', () => { manual = true; recalc(); });
-        credIn.addEventListener('input', () => { manual = true; const c = num(credIn.value), a = sum(amount.value); if (c > 0 && a > 0) rateIn.value = +(c / a).toFixed(6); });
-        amount.addEventListener('input', () => { if (!fxBox.hidden) recalc(); });
-        amtCur.addEventListener('change', () => { manual = false; rateIn.value = ''; credIn.value = ''; });
-        dateIn?.addEventListener('change', () => { if (!manual) { rateIn.value = ''; credIn.value = ''; } });
+        if (rateIn) {
+            rateIn.addEventListener('input', () => { manual = true; recalc(); });
+            credIn.addEventListener('input', () => { manual = true; const c = num(credIn.value), a = sum(amount.value); if (c > 0 && a > 0) rateIn.value = +(c / a).toFixed(6); });
+            amount.addEventListener('input', () => { if (!fxBox.hidden) recalc(); });
+            amtCur.addEventListener('change', () => { manual = false; rateIn.value = ''; credIn.value = ''; });
+            dateIn?.addEventListener('change', () => { if (!manual) { rateIn.value = ''; credIn.value = ''; } });
+            if (!rateIn.value && num(credIn.value) > 0 && sum(amount.value) > 0) rateIn.value = +(num(credIn.value) / sum(amount.value)).toFixed(6);
+        }
         form.addEventListener('change', fx);
-        if (!rateIn.value && num(credIn.value) > 0 && sum(amount.value) > 0) rateIn.value = +(num(credIn.value) / sum(amount.value)).toFixed(6);
         fx();
     }
 

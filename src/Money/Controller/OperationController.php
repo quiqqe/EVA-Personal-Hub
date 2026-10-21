@@ -32,7 +32,7 @@ final class OperationController extends BaseController
     {
         $month = \DateTimeImmutable::createFromFormat('!Y-m', (string) $r->query->get('m')) ?: new \DateTimeImmutable('first day of this month midnight');
         $q = trim((string) $r->query->get('q'));
-        $qb = $this->ledger->operations($scope)->orderBy('o.date', 'DESC')->addOrderBy('o.id', 'DESC');
+        $qb = $this->ledger->operations($scope)->orderBy('o.date', \SortDirection::Descending)->addOrderBy('o.id', \SortDirection::Descending);
         if ($q !== '') {
             // search spans all time, so cap it
             $qb->andWhere('LOWER(o.note) LIKE :q')->setParameter('q', '%'.mb_strtolower(addcslashes($q, '%_')).'%')->setMaxResults(300);
@@ -179,7 +179,7 @@ final class OperationController extends BaseController
     private function lastAccount(Scope $scope): ?\App\Money\Entity\Account
     {
         $last = $this->ledger->operations($scope)->andWhere('o.createdBy = :me AND a.archived = false')->setParameter('me', $scope->me)
-            ->orderBy('o.id', 'DESC')->setMaxResults(1)->getQuery()->getOneOrNullResult();
+            ->orderBy('o.id', \SortDirection::Descending)->setMaxResults(1)->getQuery()->getOneOrNullResult();
 
         return $last?->account;
     }
