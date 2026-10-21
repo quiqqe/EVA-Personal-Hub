@@ -3,8 +3,11 @@
 {% set recurring = recurring|default(false) %}
 {% if not recurring %}
     {% set split = post.split is defined or (not post and o.splits|length > 0) %}
-    {% set participants = post.participants ?? (o.splits|length ? o.splits|map(s => s.user.id.toRfc4122) : members|keys) %}
-    {% set payer = post.paid_by ?? (o.paidBy ? o.paidBy.id.toRfc4122 : app.user.id.toRfc4122) %}
+    {% set byUser = {} %}
+    {% for sp in o.splits %}{% set byUser = byUser|merge({(sp.user.id.toRfc4122): sp}) %}{% endfor %}
+    {% set mode = post.split_mode ?? o.splitMode ?? 'equal' %}
+    {% set participants = post.participants ?? (o.splits|length ? o.splits|filter(sp => sp.amount > 0)|map(sp => sp.user.id.toRfc4122) : members|keys) %}
+    {% set payer = post.paid_by ?? (o.paidBy ? o.paidBy.id.toRfc4122 : (o.splits|length ? 'many' : app.user.id.toRfc4122)) %}
 {% endif %}
 {% block body %}
 <h1>{{ recurring ? (isNew ? 'Регулярная операция' : 'Изменить регулярную') : (isNew ? 'Новая операция' : 'Операция') }}</h1>
@@ -26,10 +29,28 @@
         <label class="check"><input type="checkbox" name="split" value="1" {{ split ? 'checked' }} data-split> 👥 Разделить между участниками</label>
         <div data-split-box class="split-box">
             <label>Кто платил
-                <select name="paid_by" data-payer data-me="{{ app.user.id }}">{% for id, u in members %}<option value="{{ id }}" {{ payer == id ? 'selected' }}>{{ u.name }}{{ u == app.user ? ' (я)' }}</option>{% endfor %}</select>
+                <select name="paid_by" data-payer data-me="{{ app.user.id }}">
+                    {% for id, u in members %}<option value="{{ id }}" {{ payer == id ? 'selected' }}>{{ u.name }}{{ u == app.user ? ' (я)' }}</option>{% endfor %}
+                    <option value="many" {{ payer == 'many' ? 'selected' }}>Несколько человек…</option>
+                </select>
             </label>
-            <div class="chips">Делить между:
-                {% for id, u in members %}<label><input type="checkbox" name="participants[]" value="{{ id }}" {{ id in participants ? 'checked' }}><span>{{ u.name }}</span></label>{% endfor %}
+            <div class="seg seg-4" role="radiogroup" aria-label="Как делить">
+                {% for k, v in constant('App\\Money\\Debts::MODES') %}
+                    <label><input type="radio" name="split_mode" value="{{ k }}" {{ mode == k ? 'checked' }}><span>{{ v }}</span></label>
+                {% endfor %}
+            </div>
+            <div class="people" data-people>
+                <div class="person person-head"><span>Участник</span><span data-col-part>Доля</span><span data-col-paid>Заплатил</span></div>
+                {% for id, u in members %}
+                    {% set sp = byUser[id] ?? null %}
+                    {% set partValue = post.part[id] ?? (sp and sp.amount > 0 ? (mode == 'amounts' ? sp.amount|money_input(o.currency) : (sp.weight ?? '')) : '') %}
+                    <div class="person">
+                        <label class="check"><input type="checkbox" name="participants[]" value="{{ id }}" data-equal-only {{ id in participants ? 'checked' }}><span>{{ u.name }}{{ u == app.user ? ' (я)' }}</span></label>
+                        <input name="part[{{ id }}]" value="{{ partValue }}" inputmode="decimal" data-part data-id="{{ id }}" aria-label="Доля: {{ u.name }}">
+                        <input name="paid[{{ id }}]" value="{{ post.paid[id] ?? (sp and sp.paid > 0 ? sp.paid|money_input(o.currency) : '') }}" inputmode="decimal" placeholder="0" data-paid data-id="{{ id }}" aria-label="Заплатил: {{ u.name }}">
+                    </div>
+                {% endfor %}
+                <small class="muted" data-split-hint aria-live="polite"></small>
             </div>
             <label data-other-currency>Валюта {% include '_currency_select.html.twig' with {value: post.currency ?? o.currency ?? scope.currency} %}</label>
         </div>

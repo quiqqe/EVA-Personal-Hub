@@ -52,6 +52,22 @@ final class MoneyLogicTest extends TestCase
         self::assertSame([500, 500], Debts::splitEqually(1000, 2));
     }
 
+    public function testSplitModes(): void
+    {
+        self::assertSame(['a' => 334, 'b' => 333, 'c' => 333], Debts::split(1000, 'equal', ['a' => 1, 'b' => 1, 'c' => 1]));
+        self::assertSame(['a' => 700, 'c' => 300], Debts::split(1000, 'amounts', ['a' => 700, 'b' => 0, 'c' => 300]));
+        self::assertSame(['a' => 500, 'b' => 250, 'c' => 250], Debts::split(1000, 'shares', ['a' => 2, 'b' => 1, 'c' => 1]));
+        self::assertSame(['a' => 334, 'b' => 333, 'c' => 333], Debts::split(1000, 'percent', ['a' => 33.34, 'b' => 33.33, 'c' => 33.33]));
+        self::assertSame(1001, array_sum(Debts::split(1001, 'shares', ['a' => 1.5, 'b' => 2.5, 'c' => 3])));
+        foreach ([['amounts', ['a' => 600, 'b' => 300]], ['percent', ['a' => 60, 'b' => 30]], ['equal', ['a' => 0]]] as [$mode, $values]) {
+            try {
+                Debts::split(1000, $mode, $values);
+                self::fail("$mode should be rejected");
+            } catch (\InvalidArgumentException) {
+            }
+        }
+    }
+
     public function testSimplifyBalancesOut(): void
     {
         $net = ['a' => 3000, 'b' => -1000, 'c' => -2500, 'd' => 500];

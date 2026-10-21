@@ -89,7 +89,8 @@ final class Ledger
             return [];
         }
         $ids = array_keys($out);
-        $rows = $this->em->createQuery('SELECT IDENTITY(o.account) id, o.type, SUM(o.amount) s FROM '.Operation::class.' o
+        // a shared bill paid only partly from this account moves accountAmount, not the whole amount
+        $rows = $this->em->createQuery('SELECT IDENTITY(o.account) id, o.type, SUM(COALESCE(o.accountAmount, o.amount)) s FROM '.Operation::class.' o
             WHERE o.account IN (:ids) GROUP BY o.account, o.type')->setParameter('ids', $ids)->getArrayResult();
         foreach ($rows as $r) {
             $out[$r['id']] += $r['type'] === 'income' ? (int) $r['s'] : -(int) $r['s'];
@@ -165,7 +166,7 @@ final class Ledger
     }
 
     /**
-     * Who owes whom in a group, per currency. Positive net = the others owe this member.
+     * Who owes whom in a group, per currency: paid − owed share, adjusted by settlements. Positive net = the others owe this member.
      *
      * @return array<string, array{net: array<string, int>, plan: list<array{from: string, to: string, amount: int}>}>
      */
@@ -176,13 +177,9 @@ final class Ledger
             $net[$cur][$user] = ($net[$cur][$user] ?? 0) + $v;
         };
         $q = fn (string $dql) => $this->em->createQuery($dql)->setParameter('g', $g)->getArrayResult();
-        foreach ($q('SELECT IDENTITY(o.paidBy) u, o.currency c, SUM(o.amount) s FROM '.Operation::class.' o
-            WHERE o.group = :g AND o.paidBy IS NOT NULL GROUP BY o.paidBy, o.currency') as $r) {
-            $add($r['c'], $r['u'], (int) $r['s']);
-        }
-        foreach ($q('SELECT IDENTITY(sp.user) u, o.currency c, SUM(sp.amount) s FROM '.Split::class.' sp JOIN sp.operation o
+        foreach ($q('SELECT IDENTITY(sp.user) u, o.currency c, SUM(sp.paid) - SUM(sp.amount) s FROM '.Split::class.' sp JOIN sp.operation o
             WHERE o.group = :g GROUP BY sp.user, o.currency') as $r) {
-            $add($r['c'], $r['u'], -(int) $r['s']);
+            $add($r['c'], $r['u'], (int) $r['s']);
         }
         foreach ($q('SELECT IDENTITY(st.from) f, IDENTITY(st.to) t, st.currency c, SUM(st.amount) s FROM '.Settlement::class.' st
             WHERE st.group = :g GROUP BY st.from, st.to, st.currency') as $r) {

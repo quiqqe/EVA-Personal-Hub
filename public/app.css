@@ -301,3 +301,20 @@ nav.bottom .plus svg { width: 26px; height: 26px; }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 @media (max-width: 420px) { .top:has(.scope-switch) .brand-name { display: none; } }
+
+/* ---------- split editor ---------- */
+.seg-4 { grid-template-columns: repeat(4, 1fr); margin-bottom: var(--s4); background: var(--surface); }
+.seg-4 span { padding: 8px 2px; font-size: 13px; }
+.seg-4 input:checked + span { background: var(--accent); color: var(--on-accent); box-shadow: none; }
+.people { margin-bottom: var(--s4); }
+.person { display: grid; grid-template-columns: 1fr; gap: var(--s2); align-items: center; padding: var(--s2) 0; }
+.person + .person { border-top: 1px solid var(--line); }
+.people.with-part .person, .people.with-paid .person { grid-template-columns: 1fr 96px; }
+.people.with-part.with-paid .person { grid-template-columns: 1fr 84px 96px; }
+.person .check { margin: 0; min-height: 36px; }
+.person .check input[hidden] { display: none; }
+.person input:not([type=checkbox]) { margin: 0; min-height: 40px; padding: 8px 10px; font-size: 15px; text-align: right; background-color: var(--surface); }
+.person-head { font-size: 12px; font-weight: 600; color: var(--muted); padding-bottom: 0; }
+.person-head span:not(:first-child) { text-align: right; }
+.people:not(.with-part):not(.with-paid) .person-head { display: none; }
+[data-split-hint] { display: block; margin-top: var(--s2); font-weight: 500; }

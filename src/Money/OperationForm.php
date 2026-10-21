@@ -7,6 +7,8 @@ namespace App\Money;
 use App\Money\Entity\Operation;
 use App\Money\Entity\Recurring;
 use App\Money\Entity\Split;
+use App\Entity\User;
+use Symfony\Component\HttpFoundation\InputBag;
 use Symfony\Component\HttpFoundation\Request;
 
 /** Reads the operation form (also used for recurring templates) into the entity. */
@@ -24,13 +26,15 @@ final class OperationForm
         $t->type = \array_key_exists((string) $p->get('type'), Operation::TYPES) ? (string) $p->get('type') : 'expense';
 
         $split = $t instanceof Operation && $s->group && $t->type === 'expense' && $p->getBoolean('split');
-        $payer = $s->me;
-        if ($split) {
-            $payer = $this->pick($s->members(), (string) $p->get('paid_by')) ?? $s->me;
-        }
+        // paid_by: a member, or "many" with paid[member] amounts
+        $manyPayers = $split && $p->get('paid_by') === 'many';
+        $payer = $split && !$manyPayers ? ($this->pick($s->members(), (string) $p->get('paid_by')) ?? $s->me) : $s->me;
+        $iPay = !$split || ($manyPayers
+            ? (Money::parse((string) ($p->all('paid')[(string) $s->me->id] ?? ''), 'RUB') ?? 0) > 0
+            : $payer === $s->me);
 
-        // someone else paid: we don't know their account, only the currency
-        if ($split && $payer !== $s->me) {
+        // only others paid: we don't know their accounts, only the currency
+        if ($split && !$iPay) {
             $t->account = null;
             $currency = (string) $p->get('currency');
             if (!isset(Money::choices()[$currency])) {
@@ -103,22 +107,71 @@ final class OperationForm
 
         $t->splits->clear();
         $t->paidBy = null;
-        if ($split) {
-            $ids = array_map('strval', $p->all('participants'));
-            $people = array_values(array_filter($s->members(), fn ($u) => \in_array((string) $u->id, $ids, true)));
-            if (!$people) {
-                $errors[] = 'Отметьте, между кем делить';
-            } elseif ($t->account?->group) {
-                $errors[] = 'Расход с общего счёта делить не нужно — выберите свой счёт';
-            } else {
-                $t->paidBy = $payer;
-                foreach (Debts::splitEqually($t->amount, \count($people)) as $i => $share) {
-                    $t->splits->add(new Split($t, $people[$i], $share));
-                }
-            }
+        $t->splitMode = null;
+        $t->accountAmount = null;
+        if ($split && $t->amount > 0) {
+            array_push($errors, ...$this->applySplit($p, $s, $t, $manyPayers ? null : $payer));
         }
 
         return $errors;
+    }
+
+    /**
+     * Owed shares (equal / amounts / percent / shares) and who paid (one person or several).
+     *
+     * @return list<string> errors
+     */
+    private function applySplit(InputBag $p, Scope $s, Operation $t, ?User $payer): array
+    {
+        if ($t->account?->group) {
+            return ['Расход с общего счёта делить не нужно — выберите свой счёт'];
+        }
+        $mode = \array_key_exists((string) $p->get('split_mode'), Debts::MODES) ? (string) $p->get('split_mode') : 'equal';
+        $parts = $p->all('part');
+        $checked = array_map('strval', $p->all('participants'));
+        $values = [];
+        foreach ($s->members() as $u) {
+            $id = (string) $u->id;
+            $values[$id] = match ($mode) {
+                'equal' => \in_array($id, $checked, true) ? 1 : 0,
+                'amounts' => Money::parse((string) ($parts[$id] ?? ''), $t->currency) ?? 0,
+                default => (float) str_replace([',', ' ', "\u{00A0}"], ['.', '', ''], (string) ($parts[$id] ?? '')),
+            };
+        }
+        try {
+            $owed = Debts::split($t->amount, $mode, $values);
+        } catch (\InvalidArgumentException $e) {
+            return [$e->getMessage()];
+        }
+
+        $paid = [];
+        if ($payer) {
+            $paid[(string) $payer->id] = $t->amount;
+        } else {
+            foreach ($s->members() as $u) {
+                $v = Money::parse((string) ($p->all('paid')[(string) $u->id] ?? ''), $t->currency) ?? 0;
+                if ($v > 0) {
+                    $paid[(string) $u->id] = $v;
+                }
+            }
+            if (array_sum($paid) !== $t->amount) {
+                return ['Кто сколько заплатил — в сумме должно быть '.Money::format($t->amount, $t->currency)];
+            }
+        }
+
+        $t->splitMode = $mode;
+        $t->paidBy = $payer;
+        $mine = $paid[(string) $s->me->id] ?? 0;
+        $t->accountAmount = $t->account && $mine !== $t->amount ? $mine : null;
+        foreach ($s->members() as $u) {
+            $id = (string) $u->id;
+            if (($owed[$id] ?? 0) > 0 || ($paid[$id] ?? 0) > 0) {
+                $weight = \in_array($mode, ['percent', 'shares'], true) && ($owed[$id] ?? 0) > 0 ? (float) $values[$id] : null;
+                $t->splits->add(new Split($t, $u, $owed[$id] ?? 0, $paid[$id] ?? 0, $weight));
+            }
+        }
+
+        return [];
     }
 
     /**

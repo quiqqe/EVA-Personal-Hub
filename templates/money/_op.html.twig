@@ -1,18 +1,22 @@
 {# one operation row; `scope` is the space being viewed #}
 {% set sign = o.type == 'income' ? '+' : (o.type == 'expense' ? '−' : '') %}
+{# in my personal list a shared bill shows what left my account; the group sees the whole bill #}
+{% set shown = not scope.group and o.accountAmount is not null ? o.accountAmount : o.amount %}
+{% set people = o.splits|filter(sp => sp.amount > 0)|length %}
 <a class="op" href="{{ path('money_operation_edit', {scope: o.group ? o.group.id : scope.key, id: o.id}) }}">
     <span class="op-icon">{{ o.type == 'transfer' ? '🔁' : (o.category ? o.category.icon : (o.type == 'income' ? '💰' : '💸')) }}</span>
     <span class="op-main">
         <b>{{ o.type == 'transfer' ? 'Перевод' : (o.category ? o.category.name : 'Без категории') }}</b>
         <small>
-            {% if o.account %}{{ o.account.name }}{% else %}платил {{ o.paidBy.name ?? '—' }}{% endif %}
+            {% if o.account %}{{ o.account.name }}{% elseif o.paidBy %}оплата: {{ o.paidBy.name }}{% else %}оплата: несколько человек{% endif %}
             {% if o.toAccount %} → {{ o.toAccount.name }}{% endif %}
-            {% if o.splits|length %} · 👥 на {{ o.splits|length }}{% endif %}
+            {% if people %} · 👥 на {{ people }}{% endif %}
             {% if o.note %} · {{ o.note }}{% endif %}
         </small>
     </span>
     <span class="op-sum {{ o.type }}">
-        {{ sign }}{{ o.amount|money(o.currency) }}
+        {{ sign }}{{ shown|money(o.currency) }}
+        {% if shown != o.amount %}<small>из {{ o.amount|money(o.currency) }}</small>{% endif %}
         {% if o.toAccount and o.toAccount.currency != o.currency %}<small>→ {{ o.toAmount|money(o.toAccount.currency) }}</small><small>{{ fx_rate(o.amount, o.currency, o.toAmount, o.toAccount.currency) }}</small>{% endif %}
     </span>
 </a>

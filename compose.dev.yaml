@@ -1,0 +1,43 @@
+# Local development: docker compose -f compose.dev.yaml up -d --build
+# Code is bind-mounted, the DB is reachable on 127.0.0.1:54321.
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "127.0.0.1:${HTTP_PORT:-8080}:80"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./public:/app/public:ro
+    depends_on:
+      - app
+
+  app:
+    build:
+      context: .
+      target: dev
+    environment:
+      DATABASE_URL: postgresql://eva:eva@postgres:5432/eva?serverVersion=16&charset=utf8
+    volumes:
+      - ./:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: eva
+      POSTGRES_USER: eva
+      POSTGRES_PASSWORD: eva
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-54321}:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "eva", "-U", "eva"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

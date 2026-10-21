@@ -60,9 +60,17 @@ class Operation
     #[ORM\ManyToOne, ORM\JoinColumn(onDelete: 'SET NULL')]
     public ?Group $group = null;
 
-    /** Who paid a split expense */
+    /** Who paid a split expense; null when several people paid (see Split::$paid) */
     #[ORM\ManyToOne, ORM\JoinColumn(onDelete: 'SET NULL')]
     public ?User $paidBy = null;
+
+    /** How the expense was split: Debts::MODES */
+    #[ORM\Column(length: 10, nullable: true)]
+    public ?string $splitMode = null;
+
+    /** What actually left the account when its owner paid only part of a shared bill; null = the whole amount */
+    #[ORM\Column(type: 'bigint', nullable: true)]
+    public ?int $accountAmount = null;
 
     /** @var Collection<int, Split> */
     #[ORM\OneToMany(targetEntity: Split::class, mappedBy: 'operation', cascade: ['persist'], orphanRemoval: true)]

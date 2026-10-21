@@ -43,8 +43,8 @@ templates/money/   шаблоны инструмента
 ## Команды
 
 ```bash
-docker compose up -d --build
-docker compose exec app bin/console doctrine:migrations:migrate -n
+docker compose -f compose.dev.yaml up -d --build          # dev; прод — compose.prod.yaml
+docker compose -f compose.dev.yaml exec app bin/console doctrine:migrations:migrate -n
 php bin/phpunit                      # unit-тесты, без БД
 ```
 

@@ -7,8 +7,8 @@ PHP 8.3, Symfony 7.4, Doctrine ORM 3, PostgreSQL 16, Twig. Без JS-сборк�
 Цвета и отступы — CSS-переменные в начале `app.css`; тёмная тема — `prefers-color-scheme` или `html[data-theme]`.
 
 ```bash
-docker compose up -d --build        # dev: compose.override.yaml монтирует код, Postgres на 127.0.0.1:54321
-docker compose exec app bin/console doctrine:migrations:migrate -n
+docker compose -f compose.dev.yaml up -d --build    # код смонтирован, Postgres на 127.0.0.1:54321
+docker compose -f compose.dev.yaml exec app bin/console doctrine:migrations:migrate -n
 php bin/phpunit                     # unit-тесты расчётов, без БД
 ```
 

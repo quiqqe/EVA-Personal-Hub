@@ -15,3 +15,6 @@
 ###< phpunit/phpunit ###
 
 /.playwright-mcp/
+
+# local notes (deploy, infra): never committed
+*.local.md

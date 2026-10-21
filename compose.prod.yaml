@@ -1,3 +1,4 @@
+# Production: docker compose -f compose.prod.yaml --env-file .env.local up -d --build
 services:
   nginx:
     image: nginx:1.27-alpine
@@ -13,13 +14,13 @@ services:
   app:
     build:
       context: .
-      target: ${APP_TARGET:-prod}
+      target: prod
     restart: unless-stopped
     env_file:
       - path: .env.local
-        required: false
+        required: true
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-eva}:${POSTGRES_PASSWORD:-eva}@postgres:5432/${POSTGRES_DB:-eva}?serverVersion=16&charset=utf8
+      DATABASE_URL: postgresql://${POSTGRES_USER:-eva}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.local}@postgres:5432/${POSTGRES_DB:-eva}?serverVersion=16&charset=utf8
     volumes:
       - sessions:/app/var/sessions
     depends_on:
@@ -32,7 +33,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-eva}
       POSTGRES_USER: ${POSTGRES_USER:-eva}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eva}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.local}
     healthcheck:
       test: ["CMD", "pg_isready", "-d", "${POSTGRES_DB:-eva}", "-U", "${POSTGRES_USER:-eva}"]
       interval: 5s
