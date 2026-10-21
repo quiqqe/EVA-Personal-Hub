@@ -2,7 +2,7 @@
 {% set cur = in %}
 {% block body %}
 <section class="hero">
-    <div class="hero-head"><small>Всего на счетах</small>{% include 'money/_in_switch.html.twig' %}</div>
+    <div class="hero-head"><small>{{ scope.group ? 'Общие деньги группы' : 'Всего на счетах' }}</small>{% include 'money/_in_switch.html.twig' %}</div>
     <div class="big">{{ total|money(cur, true) }}</div>
     {% if byCurrency|length > 1 %}<small class="sub">{% for c, v in byCurrency %}{{ v|money(c) }}{{ not loop.last ? ' · ' }}{% endfor %}</small>{% endif %}
     {% if missing %}<small class="sub">без учёта {{ missing|join(', ') }} — нет курса</small>{% endif %}
@@ -10,7 +10,19 @@
         <span>Доходы за месяц <b>+{{ income|money(cur, true) }}</b></span>
         <span>Расходы за месяц <b>−{{ expense|money(cur, true) }}</b></span>
     </div>
+    {% if scope.group %}<small class="sub">По общим счетам группы и личным счетам, которые участники ей показывают.</small>{% endif %}
 </section>
+
+{% if entered %}
+<section class="card entered">
+    <div class="card-head"><h2>Внесено в группе за месяц</h2></div>
+    <div class="account-sums">
+        <div><small class="muted">Доходы</small><b class="income">+{{ entered.income|money(cur, true) }}</b></div>
+        <div><small class="muted">Расходы</small><b class="expense">−{{ entered.expense|money(cur, true) }}</b></div>
+    </div>
+    <small class="muted">Всё, что внесли внутри группы, с любых счетов (в том числе личных) и разделённые траты — сколько группа потратила вместе. На остаток «Общих денег» влияет только то, что прошло через общие счета.</small>
+</section>
+{% endif %}
 
 <div class="quick">
     <a class="btn expense" href="{{ path('money_operation_new', {scope: scope.key, type: 'expense'}) }}"><span>−</span>Расход</a>
@@ -23,11 +35,11 @@
     <div class="list">
     {% for a in accounts %}
         <a class="row" href="{{ path('money_operations', {scope: scope.key, account: a.id}) }}">
-            <span><span class="acc-icon">{{ a.icon }}</span>{{ a.name }}</span>
+            <span><span class="acc-icon">{{ a.icon }}</span>{{ a.name }}{% if scope.group and a.user %} <small class="muted">· {{ a.user.name }}</small>{% endif %}</span>
             <b class="{{ balances[a.id.toRfc4122] < 0 ? 'expense' }}">{{ balances[a.id.toRfc4122]|money(a.currency) }}</b>
         </a>
     {% else %}
-        <p class="muted">Добавьте первый счёт: наличные, карту или копилку.</p>
+        <p class="muted">{{ scope.group ? 'Создайте общий счёт группы (копилку, общую карту) или покажите группе свой личный счёт: «Счета» → счёт → «Показывать группе».' : 'Добавьте первый счёт: наличные, карту или копилку.' }}</p>
         <a class="btn primary" href="{{ path('money_account_new', {scope: scope.key, type: 'cash'}) }}">＋ Добавить счёт</a>
     {% endfor %}
     </div>

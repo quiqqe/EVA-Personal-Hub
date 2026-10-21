@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Money\Entity;
 
+use App\Entity\Group;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
@@ -46,10 +49,20 @@ class Account
     #[ORM\Column]
     public \DateTimeImmutable $createdAt;
 
+    /**
+     * Groups that see this personal account: its balance and operations count in the group's "common money".
+     *
+     * @var Collection<int, Group>
+     */
+    #[ORM\ManyToMany(targetEntity: Group::class)]
+    #[ORM\JoinTable(name: 'money_account_shared')]
+    public Collection $sharedWith;
+
     public function __construct()
     {
         $this->id = Uuid::v7();
         $this->createdAt = new \DateTimeImmutable();
+        $this->sharedWith = new ArrayCollection();
     }
 
     public function icon(): string

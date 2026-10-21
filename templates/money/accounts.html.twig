@@ -11,5 +11,17 @@
     <p class="muted">Счетов пока нет</p>
 {% endfor %}
 </section>
+{% if shared %}
+<h3>Личные счета участников, видимые группе</h3>
+<section class="card list">
+{% for a in shared %}
+    <a class="row" href="{{ path('money_operations', {scope: scope.key, account: a.id}) }}">
+        <span><span class="acc-icon">{{ a.icon }}</span>{{ a.name }}<br><small class="muted">{{ a.user.name }} · {{ a.currency }}</small></span>
+        <b class="{{ balances[a.id.toRfc4122] < 0 ? 'expense' }}">{{ balances[a.id.toRfc4122]|money(a.currency) }}</b>
+    </a>
+{% endfor %}
+</section>
+{% endif %}
+{% if scope.group %}<p class="tip">💡 <span>Свой личный счёт можно показать группе: «Личное» → «Счета» → счёт → «Показывать группам».</span></p>{% endif %}
 <p class="tip">💡 <span>Долги вне группы: заведите счёт типа «Долги» на человека. Дали в долг — перевод на этот счёт, вернули — перевод обратно. Плюс на счёте — вам должны.</span></p>
 {% endblock %}

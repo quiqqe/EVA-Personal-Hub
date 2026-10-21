@@ -487,3 +487,8 @@ label > .ss { margin-top: 6px; }
 
 .label-row { display: flex; justify-content: space-between; align-items: baseline; }
 .label-row a { font-weight: 600; font-size: 13px; }
+
+fieldset.share { border: 1px solid var(--line); border-radius: var(--r); padding: var(--s3) var(--s4) var(--s4); margin: 0 0 var(--s4); }
+fieldset.share legend { padding: 0 6px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+fieldset.share .check { margin: var(--s2) 0; }
+.card.entered .account-sums { margin-top: 0; }

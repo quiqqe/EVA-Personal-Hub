@@ -102,6 +102,10 @@ final class GroupController extends BaseController
                 }
                 $g->memberships->removeElement($m);
                 $this->em->remove($m);
+                // whoever leaves stops sharing their accounts with the group
+                foreach ($this->em->getRepository(\App\Money\Entity\Account::class)->findBy(['user' => $m->user]) as $a) {
+                    $a->sharedWith->removeElement($g);
+                }
             }
         }
         $this->em->flush();

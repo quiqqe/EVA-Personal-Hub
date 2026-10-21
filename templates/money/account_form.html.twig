@@ -12,6 +12,15 @@
     </label>
     <label>Начальный остаток <input name="initial" inputmode="decimal" value="{{ account.initialBalance|money_input(account.currency) }}" placeholder="0"></label>
     <small class="muted">Сколько было на счёте до начала учёта. Для кредитки или долга «я должен» — с минусом.</small>
+    {% if not scope.group and my_groups() %}
+    <fieldset class="share">
+        <legend>Показывать группам</legend>
+        {% for g in my_groups() %}
+            <label class="check"><input type="checkbox" name="share[]" value="{{ g.id }}" {{ g in account.sharedWith ? 'checked' }}> 👥 {{ g.name }}</label>
+        {% endfor %}
+        <small class="muted">Участники увидят баланс и операции этого счёта, а он войдёт в «Общие деньги» группы. Менять счёт сможете только вы.</small>
+    </fieldset>
+    {% endif %}
     <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
     <button class="btn primary wide">Сохранить</button>
 </form>

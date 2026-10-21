@@ -28,10 +28,14 @@ final class AccountController extends BaseController
     {
         $accounts = $this->ledger->accounts($scope, archived: true);
 
+        // a group also sees members' personal accounts shared with it (only their owners can edit them)
+        $shared = $scope->group ? array_values(array_filter($this->ledger->commonAccounts($scope->group), fn (Account $a) => $a->user !== null)) : [];
+
         return $this->render('money/accounts.html.twig', [
             'scope' => $scope,
             'accounts' => $accounts,
-            'balances' => $this->ledger->balances($accounts),
+            'shared' => $shared,
+            'balances' => $this->ledger->balances([...$accounts, ...$shared]),
         ]);
     }
 
@@ -62,6 +66,13 @@ final class AccountController extends BaseController
             };
             if (!$error) {
                 $a->initialBalance = (int) $initial;
+                // a personal account can be shown to any of my groups (its balance and operations join their common money)
+                if (!$scope->group) {
+                    $chosen = array_map('strval', $p->all('share'));
+                    foreach ($this->ledger->groupsOf($scope->me) as $g) {
+                        \in_array((string) $g->id, $chosen, true) ? ($a->sharedWith->contains($g) || $a->sharedWith->add($g)) : $a->sharedWith->removeElement($g);
+                    }
+                }
                 $this->em->persist($a);
                 $this->em->flush();
 

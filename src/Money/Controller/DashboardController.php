@@ -40,7 +40,8 @@ final class DashboardController extends BaseController
     public function index(Request $r, Scope $scope, Ledger $ledger, Rates $rates, EntityManagerInterface $em): Response
     {
         $in = self::displayCurrency($r, $scope);
-        $accounts = $ledger->accounts($scope);
+        // a group's money: its own accounts plus personal ones shared with it — balance and flows over the same set
+        $accounts = $scope->group ? $ledger->commonAccounts($scope->group) : $ledger->accounts($scope);
         $balances = $ledger->balances($accounts);
         $byCurrency = [];
         foreach ($accounts as $a) {
@@ -50,8 +51,7 @@ final class DashboardController extends BaseController
 
         $from = new \DateTimeImmutable('first day of this month midnight');
         $to = $from->modify('+1 month');
-        $expense = $ledger->byCategory($scope, 'expense', $from, $to, $in);
-        $income = $ledger->byCategory($scope, 'income', $from, $to, $in);
+        $flows = $ledger->flows($accounts, $from, $to, $in);
 
         return $this->render('money/dashboard.html.twig', [
             'scope' => $scope,
@@ -61,8 +61,9 @@ final class DashboardController extends BaseController
             'total' => $total,
             'missing' => $missing,
             'byCurrency' => $byCurrency,
-            'income' => $income['total'],
-            'expense' => $expense['total'],
+            'income' => $flows['income'],
+            'expense' => $flows['expense'],
+            'entered' => $scope->group ? $ledger->enteredInGroup($scope->group, $from, $to, $in) : null,
             'budgets' => self::budgets($scope, $em, $ledger),
             'goals' => $this->goals($scope, $em, $ledger),
             'debts' => $scope->group ? $ledger->debts($scope->group) : [],

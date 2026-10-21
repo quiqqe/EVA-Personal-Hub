@@ -5,7 +5,7 @@
 <section class="card account-card">
     <div class="row">
         <span><span class="acc-icon">{{ account.icon }}</span><b>{{ account.name }}</b>{% if account.archived %} <span class="badge">архив</span>{% endif %}</span>
-        <a class="btn small" href="{{ path('money_account_edit', {scope: scope.key, id: account.id}) }}">✏️ Изменить</a>
+        {% if scope.owns(account) %}<a class="btn small" href="{{ path('money_account_edit', {scope: scope.key, id: account.id}) }}">✏️ Изменить</a>{% else %}<small class="muted">счёт {{ account.user.name ?? '' }}</small>{% endif %}
     </div>
     <div class="account-sums">
         <div><small class="muted">Баланс</small><b class="{{ balance < 0 ? 'expense' }}">{{ balance|money(account.currency) }}</b></div>

@@ -42,6 +42,63 @@ final class Ledger
         return $qb->getQuery()->getResult();
     }
 
+    /**
+     * A group's common money: its own accounts plus members' personal accounts shared with it.
+     *
+     * @return list<Account>
+     */
+    public function commonAccounts(Group $g): array
+    {
+        return $this->em->createQuery('SELECT a FROM '.Account::class.' a WHERE a.archived = false AND (a.group = :g OR :g MEMBER OF a.sharedWith) ORDER BY a.id')
+            ->setParameter('g', $g)->getResult();
+    }
+
+    /**
+     * Income and expenses on exactly these accounts (so they add up with the accounts' balances), in $in.
+     *
+     * @param list<Account> $accounts
+     *
+     * @return array{income: int, expense: int}
+     */
+    public function flows(array $accounts, \DateTimeImmutable $from, \DateTimeImmutable $to, string $in): array
+    {
+        $out = ['income' => 0, 'expense' => 0];
+        if (!$accounts) {
+            return $out;
+        }
+        $rows = $this->em->createQuery('SELECT o.date d, o.type t, o.currency cur, SUM(COALESCE(o.accountAmount, o.amount)) s FROM '.Operation::class.' o
+            WHERE o.account IN (:ids) AND o.type IN (\'income\', \'expense\') AND o.date >= :from AND o.date < :to
+            GROUP BY o.date, o.type, o.currency')
+            ->setParameter('ids', array_map(fn (Account $a) => (string) $a->id, $accounts))
+            ->setParameter('from', $from, 'date_immutable')->setParameter('to', $to, 'date_immutable')->getArrayResult();
+        $this->prefetchRates($rows, $in);
+        foreach ($rows as $r) {
+            $out[$r['t']] += $this->rates->convert((int) $r['s'], $r['cur'], $in, $r['d']) ?? 0;
+        }
+
+        return $out;
+    }
+
+    /**
+     * What was entered inside the group (any account, split bills included): how much the group spent together.
+     *
+     * @return array{income: int, expense: int}
+     */
+    public function enteredInGroup(Group $g, \DateTimeImmutable $from, \DateTimeImmutable $to, string $in): array
+    {
+        $out = ['income' => 0, 'expense' => 0];
+        $rows = $this->em->createQuery('SELECT o.date d, o.type t, o.currency cur, SUM(o.amount) s FROM '.Operation::class.' o
+            WHERE o.group = :g AND o.type IN (\'income\', \'expense\') AND o.date >= :from AND o.date < :to
+            GROUP BY o.date, o.type, o.currency')
+            ->setParameter('g', $g)->setParameter('from', $from, 'date_immutable')->setParameter('to', $to, 'date_immutable')->getArrayResult();
+        $this->prefetchRates($rows, $in);
+        foreach ($rows as $r) {
+            $out[$r['t']] += $this->rates->convert((int) $r['s'], $r['cur'], $in, $r['d']) ?? 0;
+        }
+
+        return $out;
+    }
+
     /** @return list<Account> my personal accounts plus those of all my groups (destinations of a transfer) */
     public function reachableAccounts(User $me): array
     {
@@ -104,14 +161,15 @@ final class Ledger
         return $out;
     }
 
-    /** Operations visible in the space; personal = touching my accounts, group = created in it or touching its accounts. */
+    /** Operations visible in the space; personal = touching my accounts, group = created in it or touching its common accounts. */
     public function operations(Scope $s): QueryBuilder
     {
         $qb = $this->em->createQueryBuilder()->select('o')->from(Operation::class, 'o')
             ->leftJoin('o.account', 'a')->leftJoin('o.toAccount', 'ta');
 
         return $s->group
-            ? $qb->where('o.group = :g OR a.group = :g OR ta.group = :g')->setParameter('g', $s->group)
+            // entered in the group, or moving the group's common money (its accounts, personal ones shared with it)
+            ? $qb->where('o.group = :g OR a.group = :g OR ta.group = :g OR :g MEMBER OF a.sharedWith OR :g MEMBER OF ta.sharedWith')->setParameter('g', $s->group)
             : $qb->where('a.user = :me OR ta.user = :me')->setParameter('me', $s->me);
     }
 

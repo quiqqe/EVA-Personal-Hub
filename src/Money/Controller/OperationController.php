@@ -45,7 +45,11 @@ final class OperationController extends BaseController
         $account = null;
         if (Uuid::isValid($filters['account'])) {
             $qb->andWhere('a.id = :acc OR ta.id = :acc')->setParameter('acc', $filters['account']);
-            foreach ($this->ledger->accounts($scope, archived: true) as $a) {
+            $candidates = $this->ledger->accounts($scope, archived: true);
+            if ($scope->group) {
+                $candidates = [...$candidates, ...$this->ledger->commonAccounts($scope->group)];
+            }
+            foreach ($candidates as $a) {
                 if ((string) $a->id === $filters['account']) {
                     $account = $a;
                 }
