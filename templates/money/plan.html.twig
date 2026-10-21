@@ -12,6 +12,17 @@
             {% if b.spent > b.budget.amount %}<small class="expense">Превышен на {{ (b.spent - b.budget.amount)|money(cur) }}</small>
             {% else %}<small class="muted">Осталось {{ (b.budget.amount - b.spent)|money(cur) }}</small>{% endif %}
             {% if b.missing %}<small class="muted"> · без учёта {{ b.missing|join(', ') }} — нет курса</small>{% endif %}
+            <details class="edit-row">
+                <summary>Изменить</summary>
+                <form method="post" action="{{ path('money_budget_save', {scope: scope.key}) }}" class="inline">
+                    <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
+                    <input type="hidden" name="category" value="{{ b.budget.category.id }}">
+                    <input name="amount" inputmode="decimal" value="{{ b.budget.amount|money_input(cur) }}" required aria-label="Лимит в месяц">
+                    {% include '_currency_select.html.twig' with {value: cur, short: true} %}
+                    <button class="btn primary small">Сохранить</button>
+                    <button class="btn small danger" name="amount" value="0" formnovalidate data-confirm="Убрать бюджет «{{ b.budget.category.name }}»?">Убрать</button>
+                </form>
+            </details>
         </div>
     {% else %}
         <p class="muted">Задайте лимит на категорию — увидите, сколько осталось до конца месяца.</p>
@@ -23,7 +34,7 @@
         {% include '_currency_select.html.twig' with {value: scope.currency, short: true} %}
         <button class="btn primary small">Задать</button>
     </form>
-    <small class="muted">Траты во всех валютах пересчитываются в валюту бюджета. Чтобы убрать бюджет — задайте 0.</small>
+    <small class="muted">Траты во всех валютах пересчитываются в валюту бюджета.</small>
 </section>
 
 <section class="card">
@@ -45,10 +56,22 @@
                         {% endif %}
                     {% endif %}
                 </small>
-                <form method="post" action="{{ path('money_goal_delete', {scope: scope.key, id: g.goal.id}) }}" data-confirm="Удалить цель? Счёт и деньги останутся.">
-                    <input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn small" aria-label="Удалить цель" title="Удалить цель">✕</button>
-                </form>
             </div>
+            <details class="edit-row">
+                <summary>Изменить</summary>
+                <form method="post" action="{{ path('money_goal_save', {scope: scope.key}) }}" class="stack">
+                    <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
+                    <input type="hidden" name="id" value="{{ g.goal.id }}">
+                    <input name="name" value="{{ g.goal.name }}" required maxlength="100" aria-label="Название">
+                    <select name="account" required aria-label="Счёт">{% for a in accounts %}<option value="{{ a.id }}" {{ a == g.goal.account ? 'selected' }}>{{ a.icon }} {{ a.name }} · {{ a.currency }}</option>{% endfor %}</select>
+                    <input name="target" inputmode="decimal" value="{{ g.goal.target|money_input(c) }}" required aria-label="Сколько нужно">
+                    <label>Срок (необязательно) <input type="date" name="deadline" value="{{ g.goal.deadline ? g.goal.deadline|date('Y-m-d') }}"></label>
+                    <button class="btn primary small">Сохранить</button>
+                </form>
+                <form method="post" action="{{ path('money_goal_delete', {scope: scope.key, id: g.goal.id}) }}" data-confirm="Удалить цель? Счёт и деньги останутся.">
+                    <input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn small danger">Удалить цель</button>
+                </form>
+            </details>
         </div>
     {% else %}
         <p class="muted">Цель привязывается к счёту-копилке: прогресс — его баланс. Копите на отдельном счёте — заведите его в один тап:</p>

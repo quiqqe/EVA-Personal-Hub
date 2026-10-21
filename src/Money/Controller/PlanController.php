@@ -77,7 +77,11 @@ final class PlanController extends BaseController
         if ($name === '' || $target === null || $target <= 0) {
             $this->addFlash('error', 'Укажите название и сумму цели');
         } else {
-            $g = (new Goal($name, $account, $target))->setScope($scope);
+            $id = (string) $p->get('id');
+            $g = $id ? $this->own($scope, Goal::class, $id) : (new Goal($name, $account, $target))->setScope($scope);
+            $g->name = $name;
+            $g->account = $account;
+            $g->target = $target;
             $g->deadline = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $p->get('deadline')) ?: null;
             $this->em->persist($g);
             $this->em->flush();

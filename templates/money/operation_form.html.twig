@@ -172,7 +172,7 @@
 
     <label>Комментарий <input name="note" maxlength="255" value="{{ post.note ?? o.note }}" placeholder="Необязательно"></label>
 
-    {% if back %}<input type="hidden" name="back" value="{{ back }}">{% endif %}
+    {% if back|default(null) %}<input type="hidden" name="back" value="{{ back }}">{% endif %}
     {% if o.createdBy and o.createdBy != app.user %}<p class="muted small">Внесено: {{ o.createdBy.name }}</p>{% endif %}
     <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
     <div class="actions">
@@ -184,6 +184,12 @@
 {% if not isNew and not recurring %}
 <form method="post" action="{{ path('money_operation_delete', {scope: scope.key, id: o.id}) }}" data-confirm="Удалить операцию?">
     <input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn danger">Удалить</button>
+</form>
+{% elseif not isNew %}
+<form method="post" action="{{ path('money_recurring_toggle', {scope: scope.key, id: o.id}) }}" class="actions">
+    <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
+    <button class="btn">{{ o.active ? '⏸ Поставить на паузу' : '▶️ Продолжить' }}</button>
+    <button class="btn danger" name="delete" value="1" data-confirm="Удалить шаблон? Уже созданные операции останутся.">Удалить шаблон</button>
 </form>
 {% endif %}
 {% endblock %}

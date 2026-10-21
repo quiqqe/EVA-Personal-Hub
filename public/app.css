@@ -537,6 +537,8 @@ fieldset.share .check { margin: var(--s2) 0; }
 .import-transfer input { margin: 0 4px 0 0; }
 .undo-import .btn { margin-top: var(--s2); }
 .cat-more { margin: -4px 0 var(--s3) 60px; font-size: 13px; color: var(--muted); }
-.cat-more summary { cursor: pointer; }
+.cat-more summary, .edit-row summary { cursor: pointer; }
+.edit-row { margin-top: var(--s2); font-size: 13px; color: var(--muted); }
+.edit-row form { margin-top: var(--s2); }
 .cat-more form { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s2); }
 .cat-more select, .cat-more .ss { flex: 1 1 160px; min-width: 0; margin: 0; }
