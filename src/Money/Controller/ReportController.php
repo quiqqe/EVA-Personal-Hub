@@ -19,16 +19,21 @@ final class ReportController extends BaseController
         $month = \DateTimeImmutable::createFromFormat('!Y-m', (string) $r->query->get('m')) ?: new \DateTimeImmutable('first day of this month midnight');
         $next = $month->modify('+1 month');
         $in = DashboardController::displayCurrency($r, $scope);
-        $monthly = $ledger->monthly($scope, 12, $in);
+        // a group: which money to count (same two definitions as its dashboard)
+        $basis = $ledger->basis($scope, (string) $r->query->get('basis'));
+        $monthly = $ledger->monthly($scope, 12, $in, $basis);
 
         return $this->render('money/reports.html.twig', [
             'scope' => $scope,
             'month' => $month,
             'in' => $in,
-            'expense' => $ledger->byCategory($scope, 'expense', $month, $next, $in),
-            'income' => $ledger->byCategory($scope, 'income', $month, $next, $in),
-            'monthly' => $monthly,
-            'peak' => max(1, ...array_values(array_map(fn ($m) => max($m['income'], $m['expense']), $monthly))),
+            'basis' => $basis,
+            'bases' => Ledger::BASES,
+            'expense' => $ledger->byCategory($scope, 'expense', $month, $next, $in, $basis),
+            'income' => $ledger->byCategory($scope, 'income', $month, $next, $in, $basis),
+            'monthly' => $monthly['months'],
+            'monthlyMissing' => $monthly['missing'],
+            'peak' => max(1, ...array_values(array_map(fn ($m) => max($m['income'], $m['expense']), $monthly['months']))),
         ]);
     }
 }

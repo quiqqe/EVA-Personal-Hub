@@ -11,6 +11,7 @@
             {% include 'money/_bar.html.twig' with {value: b.spent, max: b.budget.amount} %}
             {% if b.spent > b.budget.amount %}<small class="expense">Превышен на {{ (b.spent - b.budget.amount)|money(cur) }}</small>
             {% else %}<small class="muted">Осталось {{ (b.budget.amount - b.spent)|money(cur) }}</small>{% endif %}
+            {% if b.missing %}<small class="muted"> · без учёта {{ b.missing|join(', ') }} — нет курса</small>{% endif %}
         </div>
     {% else %}
         <p class="muted">Задайте лимит на категорию — увидите, сколько осталось до конца месяца.</p>

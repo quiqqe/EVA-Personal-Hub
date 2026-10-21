@@ -52,7 +52,9 @@ final class DashboardController extends BaseController
 
         $from = new \DateTimeImmutable('first day of this month midnight');
         $to = $from->modify('+1 month');
-        $flows = $ledger->flows($accounts, $from, $to, $in);
+        // the same definitions as Reports: personal = my accounts; group = common money (+ separately: entered in it)
+        $flows = $ledger->totals($scope, $scope->group ? 'common' : null, $from, $to, $in);
+        $transfers = $ledger->transfers($accounts, $from, $to, $in);
 
         return $this->render('money/dashboard.html.twig', [
             'scope' => $scope,
@@ -64,7 +66,9 @@ final class DashboardController extends BaseController
             'byCurrency' => $byCurrency,
             'income' => $flows['income'],
             'expense' => $flows['expense'],
-            'entered' => $scope->group ? $ledger->enteredInGroup($scope->group, $from, $to, $in) : null,
+            'flowMissing' => $flows['missing'],
+            'transfers' => $transfers,
+            'entered' => $scope->group ? $ledger->totals($scope, 'entered', $from, $to, $in) : null,
             'budgets' => self::budgets($scope, $em, $ledger),
             'goals' => $this->goals($scope, $em, $ledger),
             'debts' => $scope->group ? $ledger->debts($scope->group) : [],
@@ -80,12 +84,12 @@ final class DashboardController extends BaseController
         $spent = [];
         $out = [];
         foreach ($em->getRepository(Budget::class)->findBy($scope->group ? ['group' => $scope->group] : ['user' => $scope->me, 'group' => null]) as $b) {
-            $spent[$b->currency] ??= $ledger->byCategory($scope, 'expense', $from, $from->modify('+1 month'), $b->currency)['rows'];
+            $spent[$b->currency] ??= $ledger->byCategory($scope, 'expense', $from, $from->modify('+1 month'), $b->currency);
             $sum = 0;
-            foreach ($spent[$b->currency] as $row) {
+            foreach ($spent[$b->currency]['rows'] as $row) {
                 $sum += $row['category'] === $b->category ? $row['amount'] : 0;
             }
-            $out[] = ['budget' => $b, 'spent' => $sum];
+            $out[] = ['budget' => $b, 'spent' => $sum, 'missing' => $spent[$b->currency]['missing']];
         }
 
         return $out;

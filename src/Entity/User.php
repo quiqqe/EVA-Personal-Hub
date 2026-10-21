@@ -25,6 +25,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: 'bigint', unique: true, nullable: true)]
     public ?int $telegramId = null;
 
+    /** "Today" and month boundaries are the person's, not the server's */
+    #[ORM\Column(length: 64, options: ['default' => 'Europe/Moscow'])]
+    public string $timezone = 'Europe/Moscow';
+
+    /** Follows the browser until the person picks a zone in the profile */
+    #[ORM\Column(options: ['default' => true])]
+    public bool $timezoneAuto = true;
+
     #[ORM\Column]
     public \DateTimeImmutable $createdAt;
 

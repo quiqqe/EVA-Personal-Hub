@@ -17,7 +17,8 @@ class PasswordReset
     #[ORM\Id, ORM\Column(length: 64)]
     public string $tokenHash;
 
-    #[ORM\Column]
+    /** an absolute moment (timestamptz): its expiry must not depend on whose time zone reads it */
+    #[ORM\Column(type: 'datetimetz_immutable')]
     public \DateTimeImmutable $createdAt;
 
     /** the plain token, only in memory right after creation (goes into the link) */

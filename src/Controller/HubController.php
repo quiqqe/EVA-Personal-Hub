@@ -51,6 +51,13 @@ final class HubController extends BaseController
             if (isset(Money::choices()[$currency])) {
                 $me->currency = $currency;
             }
+            $tz = (string) $r->request->get('timezone');
+            if ($tz === 'auto') {
+                $me->timezoneAuto = true;
+            } elseif (\in_array($tz, \DateTimeZone::listIdentifiers(), true)) {
+                $me->timezone = $tz;
+                $me->timezoneAuto = false;
+            }
             // someone who came via Telegram can add an email to sign in with a password too
             $email = mb_strtolower(trim((string) $r->request->get('email')));
             if (!$me->email && $email !== '') {
@@ -81,6 +88,21 @@ final class HubController extends BaseController
         }
 
         return $this->render('profile.html.twig');
+    }
+
+    /** The browser reports its zone; it's taken unless the person chose one in the profile. */
+    #[Route('/profile/timezone', name: 'profile_timezone', methods: ['POST'])]
+    public function timezone(Request $r, EntityManagerInterface $em): Response
+    {
+        $this->checkCsrf($r);
+        $tz = (string) $r->request->get('timezone');
+        $me = $this->me();
+        if ($me->timezoneAuto && \in_array($tz, \DateTimeZone::listIdentifiers(), true) && $tz !== $me->timezone) {
+            $me->timezone = $tz;
+            $em->flush();
+        }
+
+        return new Response('', 204);
     }
 
     #[Route('/manifest.webmanifest', name: 'manifest')]

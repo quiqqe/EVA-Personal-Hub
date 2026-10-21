@@ -10,7 +10,9 @@
         <span>Доходы за месяц <b>+{{ income|money(cur, true) }}</b></span>
         <span>Расходы за месяц <b>−{{ expense|money(cur, true) }}</b></span>
     </div>
-    {% if scope.group %}<small class="sub">По общим счетам группы и личным счетам, которые участники ей показывают.</small>{% endif %}
+    {% if transfers.in or transfers.out %}<small class="sub">Переводы: {% if transfers.in %}+{{ transfers.in|money(cur, true) }} пришло{% endif %}{% if transfers.in and transfers.out %} · {% endif %}{% if transfers.out %}−{{ transfers.out|money(cur, true) }} ушло{% endif %} {{ scope.group ? '(с других счетов / на другие счета)' : '(на счета групп и с них)' }}</small>{% endif %}
+    {% if flowMissing %}<small class="sub">без учёта {{ flowMissing|join(', ') }} — нет курса</small>{% endif %}
+    {% if scope.group %}<small class="sub">По общим счетам группы и личным счетам, которые участники ей показывают. Возвраты долгов внутри группы — не доход и не расход.</small>{% endif %}
 </section>
 
 {% if entered %}

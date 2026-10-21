@@ -19,7 +19,8 @@ class TelegramLogin
     #[ORM\Id, ORM\Column(length: 32)]
     public string $code;
 
-    #[ORM\Column]
+    /** an absolute moment (timestamptz): its expiry must not depend on whose time zone reads it */
+    #[ORM\Column(type: 'datetimetz_immutable')]
     public \DateTimeImmutable $createdAt;
 
     /** Who pressed Start in the bot (set on /start, must match the one who confirms) */

@@ -53,51 +53,7 @@ final class Ledger
             ->setParameter('g', $g)->getResult();
     }
 
-    /**
-     * Income and expenses on exactly these accounts (so they add up with the accounts' balances), in $in.
-     *
-     * @param list<Account> $accounts
-     *
-     * @return array{income: int, expense: int}
-     */
-    public function flows(array $accounts, \DateTimeImmutable $from, \DateTimeImmutable $to, string $in): array
-    {
-        $out = ['income' => 0, 'expense' => 0];
-        if (!$accounts) {
-            return $out;
-        }
-        $rows = $this->em->createQuery('SELECT o.date d, o.type t, o.currency cur, SUM(COALESCE(o.accountAmount, o.amount)) s FROM '.Operation::class.' o
-            WHERE o.account IN (:ids) AND o.type IN (\'income\', \'expense\') AND o.date >= :from AND o.date < :to
-            GROUP BY o.date, o.type, o.currency')
-            ->setParameter('ids', array_map(fn (Account $a) => (string) $a->id, $accounts))
-            ->setParameter('from', $from, 'date_immutable')->setParameter('to', $to, 'date_immutable')->getArrayResult();
-        $this->prefetchRates($rows, $in);
-        foreach ($rows as $r) {
-            $out[$r['t']] += $this->rates->convert((int) $r['s'], $r['cur'], $in, $r['d']) ?? 0;
-        }
 
-        return $out;
-    }
-
-    /**
-     * What was entered inside the group (any account, split bills included): how much the group spent together.
-     *
-     * @return array{income: int, expense: int}
-     */
-    public function enteredInGroup(Group $g, \DateTimeImmutable $from, \DateTimeImmutable $to, string $in): array
-    {
-        $out = ['income' => 0, 'expense' => 0];
-        $rows = $this->em->createQuery('SELECT o.date d, o.type t, o.currency cur, SUM(o.amount) s FROM '.Operation::class.' o
-            WHERE o.group = :g AND o.type IN (\'income\', \'expense\') AND o.date >= :from AND o.date < :to
-            GROUP BY o.date, o.type, o.currency')
-            ->setParameter('g', $g)->setParameter('from', $from, 'date_immutable')->setParameter('to', $to, 'date_immutable')->getArrayResult();
-        $this->prefetchRates($rows, $in);
-        foreach ($rows as $r) {
-            $out[$r['t']] += $this->rates->convert((int) $r['s'], $r['cur'], $in, $r['d']) ?? 0;
-        }
-
-        return $out;
-    }
 
     /** @return list<Account> my personal accounts plus those of all my groups (destinations of a transfer) */
     public function reachableAccounts(User $me): array
@@ -222,64 +178,175 @@ final class Ledger
             ->getQuery()->getSingleScalarResult();
     }
 
+
+
+
+
+    public const BASES = ['common' => 'Общие деньги', 'entered' => 'Внесено в группе'];
+
+    /** A group's numbers default to its common money when it has any, otherwise to what was entered in it. */
+    public function defaultBasis(Scope $s): ?string
+    {
+        return $s->group ? ($this->commonAccounts($s->group) ? 'common' : 'entered') : null;
+    }
+
+    public function basis(Scope $s, ?string $asked): ?string
+    {
+        return $s->group ? (\array_key_exists((string) $asked, self::BASES) ? $asked : $this->defaultBasis($s)) : null;
+    }
+
     /**
-     * Expense or income per category for a period, converted into $in (the space's currency by default).
+     * The one definition of "income and expenses" every screen uses, so they can't disagree:
+     * - personal: operations on my accounts, a shared bill counted with what left my account;
+     * - group "common": operations on the group's accounts and personal ones shared with it — the same set as its
+     *   balance; a debt paid back from one of these accounts to another is moving money, not spending;
+     * - group "entered": everything entered inside the group, split bills whole.
      *
-     * @return array{rows: list<array{category: ?Category, amount: int}>, total: int, missing: list<string>}
+     * @return array{QueryBuilder, string} query (alias o, account a) and the amount expression
      */
-    public function byCategory(Scope $s, string $type, \DateTimeImmutable $from, \DateTimeImmutable $to, ?string $in = null): array
+    private function moneyQuery(Scope $s, ?string $basis): array
+    {
+        $qb = $this->em->createQueryBuilder()->from(Operation::class, 'o')->leftJoin('o.account', 'a')
+            ->where("o.type IN ('income', 'expense')");
+        if (!$s->group) {
+            return [$qb->andWhere('a.user = :me')->setParameter('me', $s->me), 'COALESCE(o.accountAmount, o.amount)'];
+        }
+        if ($basis === 'entered') {
+            return [$qb->andWhere('o.group = :g')->setParameter('g', $s->group), 'o.amount'];
+        }
+
+        return [$qb->andWhere('a.archived = false AND (a.group = :g OR :g MEMBER OF a.sharedWith)')
+            // a debt paid back from one common account to another only moves money inside the group
+            ->andWhere('NOT EXISTS (SELECT st.id FROM '.Settlement::class.' st JOIN st.payerOperation po JOIN po.account pa JOIN st.receiverOperation ro JOIN ro.account ra
+                WHERE (st.payerOperation = o OR st.receiverOperation = o)
+                AND (pa.group = :g OR :g MEMBER OF pa.sharedWith) AND (ra.group = :g OR :g MEMBER OF ra.sharedWith))')
+            ->setParameter('g', $s->group), 'COALESCE(o.accountAmount, o.amount)'];
+    }
+
+    /** @return array{income: int, expense: int, missing: list<string>} for the period, in $in */
+    public function totals(Scope $s, ?string $basis, \DateTimeImmutable $from, \DateTimeImmutable $to, string $in): array
+    {
+        [$qb, $amount] = $this->moneyQuery($s, $basis);
+        $rows = $qb->select("o.date d, o.type t, o.currency cur, SUM($amount) s")
+            ->andWhere('o.date >= :from AND o.date < :to')->setParameter('from', $from, 'date_immutable')->setParameter('to', $to, 'date_immutable')
+            ->groupBy('o.date, o.type, o.currency')->getQuery()->getArrayResult();
+        $out = ['income' => 0, 'expense' => 0, 'missing' => []];
+        foreach ($this->converted($rows, $in, $out['missing']) as [$r, $v]) {
+            $out[$r['t']] += $v;
+        }
+        $out['missing'] = array_values(array_unique($out['missing']));
+
+        return $out;
+    }
+
+    /**
+     * Expense or income per category, each operation at the rate of its own day.
+     * The same category name from another space (a group's "Кафе" on my card) joins my own "Кафе" row.
+     *
+     * @return array{rows: list<array{category: ?Category, amount: int, foreign: ?string}>, total: int, missing: list<string>}
+     */
+    public function byCategory(Scope $s, string $type, \DateTimeImmutable $from, \DateTimeImmutable $to, ?string $in = null, ?string $basis = null): array
     {
         $in ??= $s->currency();
-        $rows = $this->operations($s)->select('IDENTITY(o.category) cid, o.date d, o.currency cur, SUM('.$this->amountField($s).') s')
+        [$qb, $amount] = $this->moneyQuery($s, $basis ?? $this->defaultBasis($s));
+        $rows = $qb->select("IDENTITY(o.category) cid, o.date d, o.currency cur, SUM($amount) s")
             ->andWhere('o.type = :t AND o.date >= :from AND o.date < :to')
             ->setParameter('t', $type)->setParameter('from', $from, 'date_immutable')->setParameter('to', $to, 'date_immutable')
             ->groupBy('o.category, o.date, o.currency')->getQuery()->getArrayResult();
-        $this->prefetchRates($rows, $in);
-        $sums = $missing = [];
-        foreach ($rows as $r) {
-            // each operation at the rate of its own day
-            $v = $this->rates->convert((int) $r['s'], $r['cur'], $in, $r['d']);
-            $v === null ? $missing[] = $r['cur'] : $sums[$r['cid'] ?? ''] = ($sums[$r['cid'] ?? ''] ?? 0) + $v;
+        $own = $byName = [];
+        foreach ($this->categories($s, $type, archived: true) as $c) {
+            $own[(string) $c->id] = $c;
+            $byName[mb_strtolower($c->name)] ??= $c;
+        }
+        $sums = $cats = $missing = [];
+        foreach ($this->converted($rows, $in, $missing) as [$r, $v]) {
+            $c = $r['cid'] ? ($own[$r['cid']] ?? $this->em->find(Category::class, $r['cid'])) : null;
+            if ($c && !isset($own[(string) $c->id])) {
+                $c = $byName[mb_strtolower($c->name)] ?? $c;
+            }
+            $key = $c ? (string) $c->id : '';
+            $cats[$key] = $c;
+            $sums[$key] = ($sums[$key] ?? 0) + $v;
         }
         arsort($sums);
         $out = [];
-        foreach ($sums as $cid => $v) {
-            $out[] = ['category' => $cid === '' ? null : $this->em->find(Category::class, $cid), 'amount' => $v];
+        foreach ($sums as $key => $v) {
+            $c = $cats[$key];
+            // a category that exists only in the other space: say whose it is
+            $foreign = $c && !isset($own[$key]) ? ($c->group?->name ?? 'личная') : null;
+            $out[] = ['category' => $c, 'amount' => $v, 'foreign' => $foreign];
         }
 
         return ['rows' => $out, 'total' => array_sum($sums), 'missing' => array_values(array_unique($missing))];
     }
 
-    /** @return array<string, array{income: int, expense: int}> 'Y-m' => totals in $in, oldest first */
-    public function monthly(Scope $s, int $months, string $in): array
+    /** @return array{months: array<string, array{income: int, expense: int}>, missing: list<string>} 'Y-m' => totals, oldest first */
+    public function monthly(Scope $s, int $months, string $in, ?string $basis = null): array
     {
         $from = (new \DateTimeImmutable('first day of this month midnight'))->modify('-'.($months - 1).' months');
         $out = [];
         for ($i = 0; $i < $months; ++$i) {
             $out[$from->modify("+$i months")->format('Y-m')] = ['income' => 0, 'expense' => 0];
         }
-        $rows = $this->operations($s)->select('o.date d, o.type t, o.currency cur, SUM('.$this->amountField($s).') s')
-            ->andWhere("o.type IN ('income', 'expense') AND o.date >= :from AND o.date < :to")->setParameter('from', $from, 'date_immutable')
+        [$qb, $amount] = $this->moneyQuery($s, $basis ?? $this->defaultBasis($s));
+        $rows = $qb->select("o.date d, o.type t, o.currency cur, SUM($amount) s")
+            ->andWhere('o.date >= :from AND o.date < :to')->setParameter('from', $from, 'date_immutable')
             ->setParameter('to', new \DateTimeImmutable('first day of next month midnight'), 'date_immutable')
             ->groupBy('o.date, o.type, o.currency')->getQuery()->getArrayResult();
-        $this->prefetchRates($rows, $in);
-        foreach ($rows as $r) {
-            $out[$r['d']->format('Y-m')][$r['t']] += $this->rates->convert((int) $r['s'], $r['cur'], $in, $r['d']) ?? 0;
+        $missing = [];
+        foreach ($this->converted($rows, $in, $missing) as [$r, $v]) {
+            $out[$r['d']->format('Y-m')][$r['t']] += $v;
+        }
+
+        return ['months' => $out, 'missing' => array_values(array_unique($missing))];
+    }
+
+    /**
+     * Money moved in or out of a set of accounts by transfers (top-ups of the family pot, cash withdrawn to a card that isn't shared):
+     * not income or expense, but it changes the balance — shown so balance = before + income − expense ± transfers.
+     *
+     * @param list<Account> $accounts
+     *
+     * @return array{in: int, out: int}
+     */
+    public function transfers(array $accounts, \DateTimeImmutable $from, \DateTimeImmutable $to, string $in): array
+    {
+        $out = ['in' => 0, 'out' => 0];
+        if (!$accounts) {
+            return $out;
+        }
+        $ids = array_map(fn (Account $a) => (string) $a->id, $accounts);
+        $missing = [];
+        foreach (['in' => 'o.toAccount IN (:ids) AND (o.account IS NULL OR o.account NOT IN (:ids))', 'out' => 'o.account IN (:ids) AND o.toAccount NOT IN (:ids)'] as $dir => $where) {
+            $field = $dir === 'in' ? 'o.toAmount' : 'o.amount';
+            $cur = $dir === 'in' ? 'ta.currency' : 'o.currency';
+            $rows = $this->em->createQuery("SELECT o.date d, $cur cur, SUM($field) s FROM ".Operation::class." o JOIN o.toAccount ta
+                WHERE o.type = 'transfer' AND $where AND o.date >= :from AND o.date < :to GROUP BY o.date, $cur")
+                ->setParameter('ids', $ids)->setParameter('from', $from, 'date_immutable')->setParameter('to', $to, 'date_immutable')->getArrayResult();
+            foreach ($this->converted($rows, $in, $missing) as [, $v]) {
+                $out[$dir] += $v;
+            }
         }
 
         return $out;
     }
 
-    /** In my personal space a shared bill counts with what left my account; the group counts the whole bill. */
-    private function amountField(Scope $s): string
-    {
-        return $s->group ? 'o.amount' : 'COALESCE(o.accountAmount, o.amount)';
-    }
-
-    /** @param list<array{d: \DateTimeImmutable, cur: string}> $rows */
-    private function prefetchRates(array $rows, string $in): void
+    /**
+     * Rows of (date d, currency cur, sum s) converted into $in at their day's rate; unconvertible currencies go to $missing.
+     *
+     * @return iterable<array{array, int}>
+     */
+    private function converted(array $rows, string $in, array &$missing): iterable
     {
         $this->rates->prefetch(array_column(array_filter($rows, fn ($r) => $r['cur'] !== $in), 'd'));
+        foreach ($rows as $r) {
+            $v = $this->rates->convert((int) $r['s'], $r['cur'], $in, $r['d']);
+            if ($v === null) {
+                $missing[] = $r['cur'];
+                continue;
+            }
+            yield [$r, $v];
+        }
     }
 
     /**

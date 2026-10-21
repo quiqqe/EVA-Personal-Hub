@@ -137,6 +137,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
     document.querySelectorAll('[name=theme_choice]').forEach(r => r.addEventListener('change', () => setTheme(r.value)));
 
+    // keep the account's time zone in step with the device (unless chosen by hand in the profile)
+    const tzBody = document.body.dataset;
+    const deviceTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tzBody.tzUrl && deviceTz && deviceTz !== tzBody.tz) {
+        fetch(tzBody.tzUrl, {method: 'POST', body: new URLSearchParams({timezone: deviceTz, _token: tzBody.tzToken})})
+            .then(r => { if (r.ok && !sessionStorage.getItem('tzReloaded')) { sessionStorage.setItem('tzReloaded', '1'); location.reload(); } })
+            .catch(() => {});
+    }
+
     // sign-up: preselect the base currency from the time zone (Yerevan → AMD, Almaty → KZT…), only if untouched
     const tzCurrency = {'Asia/Yerevan': 'AMD', 'Europe/Moscow': 'RUB', 'Asia/Almaty': 'KZT', 'Asia/Qostanay': 'KZT', 'Europe/Minsk': 'BYN', 'Asia/Tbilisi': 'GEL', 'Europe/Istanbul': 'TRY', 'Asia/Dubai': 'AED', 'Asia/Tashkent': 'UZS', 'Asia/Bishkek': 'KGS', 'Europe/Belgrade': 'RSD', 'Asia/Bangkok': 'THB', 'Europe/Kyiv': 'UAH'};
     const guess = tzCurrency[Intl.DateTimeFormat().resolvedOptions().timeZone];

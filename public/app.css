@@ -511,3 +511,7 @@ fieldset.share .check { margin: var(--s2) 0; }
 
 .choice { margin-top: var(--s5); padding-top: var(--s5); border-top: 1px solid var(--line); }
 .choice h3 { margin-top: 0; }
+
+.basis-seg { grid-template-columns: 1fr 1fr; margin-bottom: var(--s2); }
+.basis-seg a { display: block; text-align: center; padding: 10px 4px; border-radius: 11px; color: var(--muted); font-weight: 650; }
+.basis-seg a.on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }

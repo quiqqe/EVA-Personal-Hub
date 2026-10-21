@@ -10,6 +10,14 @@
         <label>Email <small class="muted">— чтобы входить и по паролю</small><input type="email" name="email" autocomplete="email"></label>
     {% endif %}
     <label>Основная валюта (итоги в «Личном») {% include '_currency_select.html.twig' with {value: app.user.currency} %}</label>
+    <label>Часовой пояс <small class="muted">— от него зависят «сегодня» и границы месяцев</small>
+        <select name="timezone">
+            <option value="auto" {{ app.user.timezoneAuto ? 'selected' }}>Как на устройстве (сейчас {{ app.user.timezone }})</option>
+            {% for tz in ['Asia/Yerevan', 'Europe/Moscow', 'Asia/Tbilisi', 'Asia/Almaty', 'Asia/Tashkent', 'Europe/Minsk', 'Europe/Istanbul', 'Asia/Dubai', 'Europe/Kyiv', 'Europe/Belgrade', 'Europe/Berlin', 'Europe/London', 'Asia/Bangkok', 'America/New_York', 'UTC'] %}
+                <option value="{{ tz }}" {{ not app.user.timezoneAuto and app.user.timezone == tz ? 'selected' }}>{{ tz }}</option>
+            {% endfor %}
+        </select>
+    </label>
     <details {{ not app.user.email ? 'open' }}>
         <summary>{{ app.user.password ? 'Сменить пароль' : 'Задать пароль' }}</summary>
         {% if app.user.password %}<label>Текущий пароль <input type="password" name="password" autocomplete="current-password"></label>{% endif %}
