@@ -41,8 +41,15 @@ final class OperationController extends BaseController
                 ->setParameter('from', $month, 'date_immutable')->setParameter('to', $month->modify('+1 month'), 'date_immutable');
         }
         $filters = ['account' => (string) $r->query->get('account'), 'category' => (string) $r->query->get('category'), 'type' => (string) $r->query->get('type')];
+        // viewing one account: show its card (balance, opening balance, edit) above the list
+        $account = null;
         if (Uuid::isValid($filters['account'])) {
             $qb->andWhere('a.id = :acc OR ta.id = :acc')->setParameter('acc', $filters['account']);
+            foreach ($this->ledger->accounts($scope, archived: true) as $a) {
+                if ((string) $a->id === $filters['account']) {
+                    $account = $a;
+                }
+            }
         }
         if (Uuid::isValid($filters['category'])) {
             $qb->andWhere('o.category = :cat')->setParameter('cat', $filters['category']);
@@ -62,6 +69,8 @@ final class OperationController extends BaseController
             'q' => $q,
             'filters' => $filters,
             'accounts' => $this->ledger->accounts($scope, archived: true),
+            'account' => $account,
+            'balance' => $account ? $this->ledger->balances([$account])[(string) $account->id] : null,
             'categories' => $this->ledger->categories($scope, archived: true),
         ]);
     }
@@ -77,7 +86,14 @@ final class OperationController extends BaseController
         }
         if (!$id) {
             $o->type = \array_key_exists((string) $r->query->get('type'), Operation::TYPES) ? (string) $r->query->get('type') : 'expense';
-            $o->account = $this->lastAccount($scope);
+            // ?account= from an account's card, otherwise the account used last
+            $o->account = null;
+            foreach ($this->ledger->sourceAccounts($scope) as $a) {
+                if ((string) $a->id === (string) $r->query->get('account')) {
+                    $o->account = $a;
+                }
+            }
+            $o->account ??= $this->lastAccount($scope);
         }
         $errors = [];
         if ($r->isMethod('POST')) {

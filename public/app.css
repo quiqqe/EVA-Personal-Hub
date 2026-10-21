@@ -465,3 +465,12 @@ label > .ss { margin-top: 6px; }
     body.ss-sheet-open::after { content: ""; position: fixed; inset: 0; z-index: 35; background: rgb(0 0 0 / .35); }
 }
 @keyframes ss-up { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* one account's card above its operations */
+.account-card .row { padding-top: 0; }
+.account-card .row b { font: 700 18px var(--font-display); }
+.account-sums { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); margin: var(--s2) 0; }
+.account-sums > div { background: var(--surface-2); border-radius: var(--r); padding: var(--s3) var(--s4); }
+.account-sums small { display: block; }
+.account-sums b { font: 700 17px var(--font-display); font-variant-numeric: tabular-nums; }
+.account-card .actions { margin: var(--s3) 0 var(--s2); }

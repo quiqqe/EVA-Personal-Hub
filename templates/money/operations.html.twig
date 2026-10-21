@@ -1,6 +1,24 @@
 {% extends 'money/layout.html.twig' %}
 {% block body %}
 {% set base = {scope: scope.key}|merge(filters|filter(v => v)) %}
+{% if account %}
+<section class="card account-card">
+    <div class="row">
+        <span><span class="acc-icon">{{ account.icon }}</span><b>{{ account.name }}</b>{% if account.archived %} <span class="badge">архив</span>{% endif %}</span>
+        <a class="btn small" href="{{ path('money_account_edit', {scope: scope.key, id: account.id}) }}">✏️ Изменить</a>
+    </div>
+    <div class="account-sums">
+        <div><small class="muted">Баланс</small><b class="{{ balance < 0 ? 'expense' }}">{{ balance|money(account.currency) }}</b></div>
+        <div><small class="muted">Начальный остаток</small><b>{{ account.initialBalance|money(account.currency) }}</b></div>
+    </div>
+    <div class="actions">
+        <a class="btn small expense" href="{{ path('money_operation_new', {scope: scope.key, type: 'expense', account: account.id}) }}">− Расход</a>
+        <a class="btn small income" href="{{ path('money_operation_new', {scope: scope.key, type: 'income', account: account.id}) }}">+ Доход</a>
+        <a class="btn small" href="{{ path('money_operation_new', {scope: scope.key, type: 'transfer', account: account.id}) }}">⇄ Перевод</a>
+    </div>
+    {% if account.initialBalance != 0 %}<small class="muted">Начальный остаток — сколько было на счёте до начала учёта. Изменить можно в «✏️ Изменить».</small>{% endif %}
+</section>
+{% endif %}
 <div class="month-nav">
     <a href="{{ path('money_operations', base|merge({m: month.modify('-1 month').format('Y-m')})) }}" aria-label="Предыдущий месяц">‹</a>
     <b>{{ q ? 'Поиск: «' ~ q ~ '»' : month|date('m.Y') }}</b>
