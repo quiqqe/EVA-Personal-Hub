@@ -1,1 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4f46e5"/><stop offset="1" stop-color="#7c3aed"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#g)"/><text x="32" y="44" font-family="system-ui,-apple-system,sans-serif" font-size="32" font-weight="800" fill="#fff" text-anchor="middle">E</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="eva-bg" x1="6" y1="4" x2="58" y2="62" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5b5cf6"/>
+      <stop offset="1" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="eva-shine" x1="32" y1="0" x2="32" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="url(#eva-bg)"/>
+  <rect width="64" height="64" rx="18" fill="url(#eva-shine)"/>
+  <!-- E: spine + three bars; the middle one is a switch -->
+  <g fill="#fff">
+    <rect x="17" y="16" width="8" height="32" rx="4"/>
+    <rect x="17" y="16" width="30" height="8" rx="4"/>
+    <rect x="17" y="40" width="30" height="8" rx="4"/>
+    <rect x="17" y="28" width="17" height="8" rx="4"/>
+  </g>
+  <circle cx="43" cy="32" r="4.5" fill="#a5f3fc"/>
+</svg>

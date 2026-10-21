@@ -93,7 +93,13 @@ final class HubController extends BaseController
             'display' => 'standalone',
             'background_color' => '#4f46e5',
             'theme_color' => '#4f46e5',
-            'icons' => [['src' => '/icon.svg', 'sizes' => 'any', 'type' => 'image/svg+xml']],
+            'icons' => [
+                ['src' => '/icon.svg?v=2', 'sizes' => 'any', 'type' => 'image/svg+xml'],
+                ['src' => '/icon-192.png?v=2', 'sizes' => '192x192', 'type' => 'image/png'],
+                ['src' => '/icon-512.png?v=2', 'sizes' => '512x512', 'type' => 'image/png'],
+                // full-bleed, the system crops it to its own shape
+                ['src' => '/icon-maskable-512.png?v=2', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
+            ],
         ], headers: ['Content-Type' => 'application/manifest+json']);
     }
 }
