@@ -1,0 +1,19 @@
+{% extends 'auth/_layout.html.twig' %}
+{% block title %}Восстановление пароля — EVA{% endblock %}
+{% block form %}
+<form method="post" class="auth-form">
+    <h2>Забыли пароль?</h2>
+    {% if sent %}
+        <div class="flash flash-ok" role="status">Если аккаунт с этим email привязан к Telegram, бот <b>@{{ telegram_bot() }}</b> уже прислал ссылку для нового пароля. Она действует 30 минут.</div>
+        <p class="muted">Не пришло? Проверьте email или войдите через Telegram — пароль для этого не нужен.</p>
+    {% else %}
+        <p class="muted">Пришлём ссылку для нового пароля в Telegram — в бот, через который вы входили или который привязали в профиле.</p>
+        <label for="email">Email аккаунта</label>
+        <input type="email" name="email" id="email" required autofocus autocomplete="email" inputmode="email" placeholder="you@example.com">
+        <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
+        <button class="btn primary wide auth-submit">Прислать ссылку в Telegram</button>
+    {% endif %}
+    {% if telegram_bot() %}<div class="or"><span>или</span></div>{% include '_telegram_button.html.twig' with {href: path('login_telegram')} %}{% endif %}
+    <p class="auth-switch"><a href="{{ path('login') }}">← Ко входу</a></p>
+</form>
+{% endblock %}

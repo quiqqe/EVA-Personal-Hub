@@ -484,3 +484,6 @@ label > .ss { margin-top: 6px; }
 .fx-foreign { padding: var(--s4) var(--s4) 0; margin-bottom: var(--s4); border-radius: var(--r); background: var(--accent-soft); }
 .fx-foreign input { background-color: var(--surface); }
 .fx-foreign .fx-hint { margin: -4px 0 var(--s4); }
+
+.label-row { display: flex; justify-content: space-between; align-items: baseline; }
+.label-row a { font-weight: 600; font-size: 13px; }

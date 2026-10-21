@@ -14,7 +14,7 @@
     <label for="email">Email</label>
     <input type="email" name="email" id="email" value="{{ email }}" required autofocus autocomplete="email" inputmode="email" placeholder="you@example.com">
 
-    <label for="password">Пароль</label>
+    <label for="password" class="label-row">Пароль {% if telegram_bot() %}<a href="{{ path('password_forgot') }}">Забыли?</a>{% endif %}</label>
     {% include 'auth/_password.html.twig' with {id: 'password', autocomplete: 'current-password'} %}
 
     <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">

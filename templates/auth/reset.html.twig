@@ -1,0 +1,20 @@
+{% extends 'auth/_layout.html.twig' %}
+{% block title %}Новый пароль — EVA{% endblock %}
+{% block form %}
+<form method="post" class="auth-form">
+    {% if valid %}
+        <h2>Новый пароль</h2>
+        <p class="muted">После сохранения вы сразу войдёте.</p>
+        {% if error %}<div class="flash flash-error" role="alert">{{ error }}</div>{% endif %}
+        <label for="password">Пароль <small class="muted">— от 8 символов</small></label>
+        {% include 'auth/_password.html.twig' with {id: 'password', autocomplete: 'new-password', minlength: 8} %}
+        <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
+        <button class="btn primary wide auth-submit">Сохранить и войти</button>
+    {% else %}
+        <h2>Ссылка не работает</h2>
+        <p class="muted">Она уже использована или прошло больше 30 минут. Запросите новую.</p>
+        <a class="btn primary wide auth-submit" href="{{ path('password_forgot') }}">Запросить новую ссылку</a>
+    {% endif %}
+    <p class="auth-switch"><a href="{{ path('login') }}">← Ко входу</a></p>
+</form>
+{% endblock %}
