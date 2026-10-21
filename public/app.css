@@ -523,3 +523,12 @@ fieldset.share .check { margin: var(--s2) 0; }
 .day span:last-child { font-variant-numeric: tabular-nums; }
 
 .hub-banner { display: block; margin: 0 0 var(--s4); color: var(--ink-2); }
+
+.import-rows { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.import-row { display: grid; grid-template-columns: auto 1fr auto auto; gap: var(--s2); align-items: center; padding: var(--s2) 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.import-main { min-width: 0; }
+.import-main b, .import-main small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.import-main small { color: var(--muted); }
+.import-transfer { padding: 4px 8px; margin: 0; }
+.import-transfer input { margin: 0 4px 0 0; }
+.undo-import .btn { margin-top: var(--s2); }

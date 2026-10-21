@@ -17,6 +17,17 @@
         <a class="btn small" href="{{ path('money_operation_new', {scope: scope.key, type: 'transfer', account: account.id}) }}">⇄ Перевод</a>
     </div>
     {% if account.initialBalance != 0 %}<small class="muted">Начальный остаток — сколько было на счёте до начала учёта. Изменить можно в «✏️ Изменить».</small>{% endif %}
+    {% if scope.owns(account) %}
+    <details class="reconcile">
+        <summary>🧮 Сверить остаток</summary>
+        <form method="post" action="{{ path('money_account_reconcile', {scope: scope.key, id: account.id}) }}" class="inline">
+            <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
+            <input name="actual" inputmode="decimal" placeholder="Сколько на самом деле, {{ account.currency }}" required aria-label="Фактический остаток">
+            <button class="btn small primary">Сверить</button>
+        </form>
+        <small class="muted">Посчитали наличные или открыли банк, а сумма другая? Разница запишется операцией «Корректировка остатка» сегодня — история не меняется.</small>
+    </details>
+    {% endif %}
 </section>
 {% endif %}
 <div class="month-nav">
@@ -32,6 +43,13 @@
     <select name="category"><option value="">Все категории</option><option value="none" {{ filters.category == 'none' ? 'selected' }}>Без категории</option>{% for c in categories %}<option value="{{ c.id }}" {{ filters.category == c.id.toRfc4122 ? 'selected' }}>{{ c.label }}</option>{% endfor %}</select>
     <select name="type"><option value="">Все типы</option>{% for k, v in constant('App\\Money\\Entity\\Operation::TYPES') %}<option value="{{ k }}" {{ filters.type == k ? 'selected' }}>{{ v }}</option>{% endfor %}</select>
 </form>
+{% set undo = app.session.get('import_undo') %}
+{% if undo and undo.scope == scope.key %}
+<form method="post" action="{{ path('money_import_undo', {scope: scope.key, batch: undo.batch}) }}" class="hint undo-import" data-confirm="Удалить все {{ undo.count }} операций из этого импорта?">
+    📥 Только что импортировано {{ undo.count }}. Что-то не так?
+    <input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn small">Отменить этот импорт</button>
+</form>
+{% endif %}
 {% if sum.count %}
 <div class="list-sum">
     <span>{{ sum.count }} {{ sum.count % 10 == 1 and sum.count % 100 != 11 ? 'операция' : (sum.count % 10 in [2,3,4] and sum.count % 100 not in [12,13,14] ? 'операции' : 'операций') }}{{ q ? ' найдено' }}</span>

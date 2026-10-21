@@ -132,6 +132,40 @@ final class AccountController extends BaseController
         return $this->redirectToRoute('money_accounts', ['scope' => $scope->key()]);
     }
 
+    /** Counted the cash and it's different: the difference is booked today as a correction, history stays as it was. */
+    #[Route('/{id}/reconcile', name: 'money_account_reconcile', methods: ['POST'], requirements: ['id' => '[0-9a-f-]{36}'])]
+    public function reconcile(Request $r, Scope $scope, string $id): Response
+    {
+        $this->checkCsrf($r);
+        $a = $this->find($scope, $id);
+        $actual = Money::parse((string) $r->request->get('actual'), $a->currency);
+        $back = $this->redirectToRoute('money_operations', ['scope' => $scope->key(), 'account' => $id]);
+        if ($actual === null) {
+            $this->addFlash('error', 'Введите, сколько сейчас на счёте');
+
+            return $back;
+        }
+        $diff = $actual - $this->ledger->balances([$a])[$id];
+        if ($diff === 0) {
+            $this->addFlash('ok', 'Всё сходится: на счёте '.Money::format($actual, $a->currency));
+
+            return $back;
+        }
+        $o = new Operation();
+        $o->type = $diff > 0 ? 'income' : 'expense';
+        $o->account = $a;
+        $o->currency = $a->currency;
+        $o->amount = abs($diff);
+        $o->note = 'Корректировка остатка';
+        $o->group = $scope->group;
+        $o->createdBy = $scope->me;
+        $this->em->persist($o);
+        $this->em->flush();
+        $this->addFlash('ok', 'Записана корректировка '.($diff > 0 ? '+' : '−').Money::format(abs($diff), $a->currency).' — теперь на счёте '.Money::format($actual, $a->currency));
+
+        return $back;
+    }
+
     /**
      * The account was opened in the wrong currency: every number stays the same, only its currency changes.
      * Stored minor units are rescaled where the digits differ (RUB 2 → JPY 0 → BTC 8).

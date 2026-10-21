@@ -8,7 +8,7 @@ namespace App\Money;
 final class Csv
 {
     /** @return list<list<string>> */
-    public static function rows(string $content): array
+    public static function rows(string $content, int $limit = PHP_INT_MAX): array
     {
         if (!mb_check_encoding($content, 'UTF-8')) {
             $content = mb_convert_encoding($content, 'UTF-8', 'Windows-1251');
@@ -25,7 +25,8 @@ final class Csv
         fwrite($h, $content);
         rewind($h);
         $rows = [];
-        while (($r = fgetcsv($h, null, $delim, '"', '')) !== false) {
+        // stop at the limit: a huge file must not eat the memory before we can say it's too big
+        while (\count($rows) < $limit && ($r = fgetcsv($h, null, $delim, '"', '')) !== false) {
             if ($r !== [null] && implode('', $r) !== '') {
                 $rows[] = array_map(fn ($c) => trim((string) $c), $r);
             }
@@ -43,7 +44,7 @@ final class Csv
      * amount — in the account's currency (T-Bank: «Сумма платежа»); orig_* — the purchase's own currency
      * (T-Bank: «Сумма операции» / «Валюта операции»), set for purchases abroad.
      *
-     * @return array{date: ?int, amount: ?int, note: ?int, category: ?int, orig_amount: ?int, orig_currency: ?int}
+     * @return array{date: ?int, amount: ?int, note: ?int, category: ?int, orig_amount: ?int, orig_currency: ?int, out: ?int, in: ?int}
      */
     public static function guess(array $header): array
     {
@@ -66,6 +67,8 @@ final class Csv
             'category' => $find(['/^категория/u', '/category/']),
             'orig_amount' => \in_array(true, array_map(fn ($h) => mb_strtolower($h) === 'сумма платежа', $header), true) ? $find(['/^сумма операции$/u']) : null,
             'orig_currency' => $find(['/^валюта операции$/u', '/original currency/']),
+            'out' => $find(['/^(расход|списание|сумма списания|дебет|withdrawal|debit)/u']),
+            'in' => $find(['/^(приход|зачисление|поступление|сумма зачисления|кредит|deposit|credit)/u']),
         ];
     }
 

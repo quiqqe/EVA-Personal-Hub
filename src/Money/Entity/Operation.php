@@ -21,6 +21,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(columns: ['account_id', 'date'])]
 #[ORM\Index(columns: ['to_account_id', 'date'])]
 #[ORM\Index(columns: ['group_id', 'date'])]
+#[ORM\Index(columns: ['import_batch'])]
 class Operation
 {
     public const TYPES = ['expense' => 'Расход', 'income' => 'Доход', 'transfer' => 'Перевод'];
@@ -88,6 +89,10 @@ class Operation
 
     #[ORM\Column(length: 64, unique: true, nullable: true)]
     public ?string $importHash = null;
+
+    /** Which import brought it in: the whole file can be undone at once */
+    #[ORM\Column(length: 16, nullable: true)]
+    public ?string $importBatch = null;
 
     #[ORM\Column]
     public \DateTimeImmutable $createdAt;
