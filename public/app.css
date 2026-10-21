@@ -318,3 +318,8 @@ nav.bottom .plus svg { width: 26px; height: 26px; }
 .person-head span:not(:first-child) { text-align: right; }
 .people:not(.with-part):not(.with-paid) .person-head { display: none; }
 [data-split-hint] { display: block; margin-top: var(--s2); font-weight: 500; }
+
+/* ---------- telegram login ---------- */
+.or { display: flex; align-items: center; gap: var(--s3); margin: var(--s5) 0 var(--s4); color: var(--muted); font-size: 13px; }
+.or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.tg-login { display: flex; justify-content: center; min-height: 44px; }

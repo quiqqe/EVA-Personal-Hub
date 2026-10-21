@@ -18,7 +18,9 @@ php bin/phpunit                     # unit-тесты расчётов, без �
 
 ```
 src/Entity/            общее для хаба: User, Group, Membership
-src/Controller/        вход/регистрация, профиль, главная-хаб, группы и приглашения
+src/Controller/        вход/регистрация (email и Telegram), профиль, главная-хаб, группы и приглашения
+src/TelegramAuth.php   проверка подписи Telegram Login Widget
+src/Repository/        UserRepository: загрузка пользователя по email или «tg:<id>»
 src/Money/             инструмент «Деньги»
   Entity/              Account, Category, Operation, Split, Settlement, Budget, Goal, Recurring (+ трейт Scoped)
   Controller/          Dashboard, Account, Operation (+экспорт), Category, Plan, Debt, Import, Report
@@ -53,6 +55,9 @@ tests/MoneyLogicTest   unit-тесты Money, Debts, Schedule, Csv
   Создание — в транзакции с `SELECT … FOR UPDATE` по шаблону, чтобы две вкладки не задвоили операции.
 
 ## Безопасность
+
+- Telegram: `TELEGRAM_BOT_TOKEN` и `TELEGRAM_BOT_USERNAME` — только в `.env.local`; без них кнопка не показывается.
+  Подпись — HMAC-SHA256 от отсортированных полей с ключом sha256(токен), срок — сутки.
 
 - Все POST-формы с `csrf_token('form')` (`BaseController::checkCsrf`), вход — с CSRF и лимитом попыток (5/мин).
 - Любой id из URL/формы проверяется на принадлежность пространству (`Scope::owns`, `Ledger::visible`, выборки

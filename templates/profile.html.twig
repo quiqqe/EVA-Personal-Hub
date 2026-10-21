@@ -4,16 +4,34 @@
 <h1>Профиль</h1>
 <form method="post" class="card">
     <label>Имя <input name="name" value="{{ app.user.name }}" required maxlength="100"></label>
-    <label>Email <input value="{{ app.user.email }}" disabled></label>
+    {% if app.user.email %}
+        <label>Email <input value="{{ app.user.email }}" disabled></label>
+    {% else %}
+        <label>Email <small class="muted">— чтобы входить и по паролю</small><input type="email" name="email" autocomplete="email"></label>
+    {% endif %}
     <label>Основная валюта (итоги в «Личном») {% include '_currency_select.html.twig' with {value: app.user.currency} %}</label>
-    <details>
-        <summary>Сменить пароль</summary>
-        <label>Текущий пароль <input type="password" name="password" autocomplete="current-password"></label>
+    <details {{ not app.user.email ? 'open' }}>
+        <summary>{{ app.user.password ? 'Сменить пароль' : 'Задать пароль' }}</summary>
+        {% if app.user.password %}<label>Текущий пароль <input type="password" name="password" autocomplete="current-password"></label>{% endif %}
         <label>Новый пароль <input type="password" name="new_password" minlength="8" autocomplete="new-password"></label>
     </details>
     <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
     <button class="btn primary">Сохранить</button>
 </form>
+{% if telegram_bot() or app.user.telegramId %}
+<section class="card">
+    <h2>Telegram</h2>
+    {% if app.user.telegramId %}
+        <p>✅ Привязан — можно входить через Telegram.</p>
+        <form method="post" action="{{ path('profile_telegram_unlink') }}" data-confirm="Отвязать Telegram?">
+            <input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn small">Отвязать</button>
+        </form>
+    {% else %}
+        <p class="muted">Привяжите Telegram, чтобы входить в один тап.</p>
+        {% include '_telegram_login.html.twig' with {url: url('profile_telegram_link')} %}
+    {% endif %}
+</section>
+{% endif %}
 <section class="card">
     <h2>Тема оформления</h2>
     <div class="seg" role="radiogroup" aria-label="Тема">

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Entity\User;
 use App\Money\Ledger;
 use App\Money\Money;
 use App\Money\Rates;
@@ -50,8 +51,18 @@ final class HubController extends BaseController
             if (isset(Money::choices()[$currency])) {
                 $me->currency = $currency;
             }
+            // someone who came via Telegram can add an email to sign in with a password too
+            $email = mb_strtolower(trim((string) $r->request->get('email')));
+            if (!$me->email && $email !== '') {
+                if (!filter_var($email, FILTER_VALIDATE_EMAIL) || $em->getRepository(User::class)->findOneBy(['email' => $email])) {
+                    $this->addFlash('error', 'Этот email не подходит или уже занят');
+
+                    return $this->redirectToRoute('profile');
+                }
+                $me->email = $email;
+            }
             if ($new !== '') {
-                if (!$hasher->isPasswordValid($me, (string) $r->request->get('password'))) {
+                if ($me->password !== '' && !$hasher->isPasswordValid($me, (string) $r->request->get('password'))) {
                     $this->addFlash('error', 'Текущий пароль неверный');
 
                     return $this->redirectToRoute('profile');

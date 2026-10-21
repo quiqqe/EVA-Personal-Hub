@@ -11,6 +11,7 @@
     <label>Пароль <input type="password" name="password" required autocomplete="current-password"></label>
     <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
     <button class="btn primary wide">Войти</button>
+    {% if telegram_bot() %}<div class="or"><span>или</span></div>{% include '_telegram_login.html.twig' with {url: url('login_telegram')} %}{% endif %}
     <p class="muted center">Нет аккаунта? <a href="{{ path('register') }}">Регистрация</a></p>
 </form>
 {% endblock %}

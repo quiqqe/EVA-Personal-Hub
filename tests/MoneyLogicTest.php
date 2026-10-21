@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests;
 
 use App\Money\Csv;
+use App\TelegramAuth;
 use App\Money\Debts;
 use App\Money\Money;
 use App\Money\Rates;
@@ -50,6 +51,21 @@ final class MoneyLogicTest extends TestCase
         $c = Rates::parseCbr('{"Valute":{"AMD":{"Nominal":100,"Value":19.6424}}}');
         self::assertEqualsWithDelta(0.196424, $c['AMD'], 1e-9);
         self::assertSame(1.0, $c['RUB']);
+    }
+
+    public function testTelegramSignature(): void
+    {
+        $token = '123:ABC';
+        $data = ['id' => '42', 'first_name' => 'Рома', 'username' => 'roma', 'auth_date' => '1000'];
+        ksort($data);
+        $check = implode("\n", array_map(fn ($k, $v) => "$k=$v", array_keys($data), $data));
+        $data['hash'] = hash_hmac('sha256', $check, hash('sha256', $token, true));
+
+        self::assertSame(['id' => 42, 'name' => 'Рома'], TelegramAuth::check($data, $token, 2000));
+        self::assertNull(TelegramAuth::check(['first_name' => 'Хакер'] + $data, $token, 2000), 'tampered field');
+        self::assertNull(TelegramAuth::check($data, 'other:TOKEN', 2000), 'another bot');
+        self::assertNull(TelegramAuth::check($data, $token, 1000 + 86401), 'expired');
+        self::assertNull(TelegramAuth::check(['hash' => ''] + $data, $token, 2000), 'no hash');
     }
 
     public function testInputRoundTrip(): void

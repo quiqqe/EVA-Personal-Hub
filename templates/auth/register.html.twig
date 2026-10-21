@@ -13,6 +13,7 @@
     <label>Основная валюта {% include '_currency_select.html.twig' with {value: app.request.request.get('currency', 'RUB')} %}</label>
     <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
     <button class="btn primary wide">Создать аккаунт</button>
+    {% if telegram_bot() %}<div class="or"><span>или в один тап</span></div>{% include '_telegram_login.html.twig' with {url: url('login_telegram')} %}{% endif %}
     <p class="muted center">Уже есть аккаунт? <a href="{{ path('login') }}">Войти</a></p>
 </form>
 {% endblock %}
