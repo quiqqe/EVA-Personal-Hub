@@ -1,0 +1,54 @@
+name: Test and deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: intl, pdo_pgsql
+          tools: composer:v2
+      - run: composer install --no-interaction --no-progress --prefer-dist
+      - run: bin/phpunit
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-24.04
+    # nothing to deploy to until the server secrets exist
+    if: vars.DEPLOY_ENABLED == 'true'
+    steps:
+      - name: Deploy over SSH
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          # app settings forwarded into the server's .env.local (see PASSED in bin/deploy)
+          HTTP_PORT: ${{ secrets.HTTP_PORT }}
+          DEFAULT_URI: ${{ secrets.DEFAULT_URI }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_BOT_USERNAME: ${{ secrets.TELEGRAM_BOT_USERNAME }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          {
+            for v in HTTP_PORT DEFAULT_URI TELEGRAM_BOT_TOKEN TELEGRAM_BOT_USERNAME; do
+              printf 'export %s=%q\n' "$v" "${!v}"
+            done
+            printf 'cd %q\n' "$DEPLOY_PATH"
+            echo 'git fetch --quiet origin main && git reset --quiet --hard origin/main'
+            echo 'bin/deploy'
+          } | ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$SSH_USER@$SSH_HOST" 'bash -s'

@@ -37,6 +37,8 @@ templates/money/   шаблоны инструмента
 - Формы — HTML + `csrf_token('form')`, проверка в контроллере.
 - Секреты (APP_SECRET, пароли, токены) — только в `.env*.local` / переменных окружения, никогда в коммитах,
   включая `.env.dev` и `.env.test`. Перед коммитом проверять дифф.
+- Новая переменная окружения: плейсхолдер в `.env`, имя в `PASSED`/`REQUIRED` в `bin/deploy` и в workflow
+  (`docs/development.md`, «Деплой»). Значения — только GitHub Secrets / `.env.local` на сервере.
 - Время UTC, id — UUID v7. Изменения схемы — только миграции.
 - `declare(strict_types=1);`, `final` для не-сущностей. Нетривиальная логика — с unit-тестом в `tests/`.
 

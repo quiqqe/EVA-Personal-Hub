@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Production deploy, run on the server from the project directory (by CI or by hand):
+#   bin/deploy
+# Settings passed as environment variables (CI forwards them from GitHub Secrets) are written into .env.local;
+# APP_SECRET and POSTGRES_PASSWORD are generated on the first run and never changed afterwards.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+ENV_FILE=.env.local
+# values the app can't run without
+REQUIRED="APP_SECRET POSTGRES_PASSWORD HTTP_PORT"
+# values taken from the environment when set (empty = keep what .env.local has)
+PASSED="HTTP_PORT DEFAULT_URI TELEGRAM_BOT_TOKEN TELEGRAM_BOT_USERNAME"
+
+touch "$ENV_FILE"
+chmod 600 "$ENV_FILE"
+
+get_var() { grep -E "^$1=" "$ENV_FILE" | tail -1 | cut -d= -f2- || true; }
+set_var() {
+    # rewrite instead of sed: values may contain any characters
+    { grep -vE "^$1=" "$ENV_FILE" || true; printf '%s=%s\n' "$1" "$2"; } > "$ENV_FILE.tmp"
+    mv "$ENV_FILE.tmp" "$ENV_FILE"
+    chmod 600 "$ENV_FILE"
+}
+
+set_var APP_ENV prod
+[ -n "$(get_var APP_SECRET)" ] || set_var APP_SECRET "$(openssl rand -hex 32)"
+# the database is created with this password: generated once, never regenerated
+[ -n "$(get_var POSTGRES_PASSWORD)" ] || set_var POSTGRES_PASSWORD "$(openssl rand -hex 24)"
+for name in $PASSED; do
+    if [ -n "${!name:-}" ]; then set_var "$name" "${!name}"; fi
+done
+
+missing=""
+for name in $REQUIRED; do
+    [ -n "$(get_var "$name")" ] || missing="$missing $name"
+done
+if [ -n "$missing" ]; then
+    echo "Deploy stopped, not set:$missing (add them as GitHub Secrets or to $ENV_FILE). The site keeps running the old version." >&2
+    exit 1
+fi
+
+compose() { docker compose -f compose.prod.yaml --env-file "$ENV_FILE" "$@"; }
+
+# a failed build leaves the running containers untouched
+compose build --pull
+compose up -d --remove-orphans
+compose exec -T app bin/console doctrine:migrations:migrate -n --allow-no-migration
+
+port="$(get_var HTTP_PORT)"
+for i in $(seq 1 30); do
+    if curl -fsS -o /dev/null "http://127.0.0.1:$port/login"; then
+        echo "Deployed $(git rev-parse --short HEAD), the site answers on 127.0.0.1:$port"
+        docker image prune -f > /dev/null
+        exit 0
+    fi
+    sleep 2
+done
+echo "The site does not answer after deploy: docker compose -f compose.prod.yaml logs app" >&2
+exit 1
