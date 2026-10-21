@@ -188,6 +188,32 @@ document.addEventListener('DOMContentLoaded', () => {
         navigator.clipboard?.writeText(input.value).then(() => { b.textContent = 'Скопировано ✓'; }, () => input.select());
     }));
 
+    // paying a debt back in another currency
+    const settle = document.querySelector('[data-settle]');
+    if (settle) {
+        const f = n => settle.querySelector(`[name=${n}]`);
+        const sync = () => {
+            const paidCur = f('paid_currency').value, debtCur = f('currency').value, foreign = paidCur !== debtCur;
+            const box = settle.querySelector('[data-settle-fx]');
+            box.hidden = !foreign;
+            box.querySelectorAll('input').forEach(i => { i.disabled = !foreign; });
+            settle.querySelector('[data-settle-rate-label]').textContent = `${debtCur} за 1 ${paidCur}`;
+            settle.querySelector('[data-settle-cur]').textContent = `(${debtCur})`;
+        };
+        settle.addEventListener('change', sync);
+        f('fx_rate').addEventListener('input', () => { const r = parseFloat(f('fx_rate').value.replace(',', '.')), a = parseFloat(f('paid_amount').value.replace(/\s/g, '').replace(',', '.')); if (r > 0 && a > 0) f('amount').value = +(a * r).toFixed(2); });
+        document.querySelectorAll('[data-settle-fill]').forEach(a => a.addEventListener('click', () => {
+            const d = JSON.parse(a.dataset.settleFill);
+            for (const [k, v] of Object.entries({from: d.from, to: d.to, currency: d.currency, amount: d.amount})) {
+                f(k).value = v;
+                f(k).dispatchEvent(new Event('change', {bubbles: true}));
+            }
+            f('paid_amount').value = '';
+            f('paid_amount').focus();
+        }));
+        sync();
+    }
+
     const form = document.querySelector('[data-op-form]');
     if (!form) return;
     const $ = sel => form.querySelector(sel);
@@ -254,6 +280,51 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('change', update);
     form.addEventListener('input', e => { if (e.target.matches('[data-part], [data-paid], [name=amount]')) update(); });
     update();
+
+    // income/expense in another currency than the account's: market rate of the operation's day is filled in,
+    // the person can replace it with the exchanger's/bank's rate or the sum that actually hit the account
+    const amtCur = $('[name=amount_currency]'), fxBox = $('[data-fx-foreign]');
+    if (amtCur && fxBox) {
+        const rateIn = $('[data-fx-rate2]'), credIn = $('[data-fx-credited]'), dateIn = $('[name=date]');
+        const money = x => +x.toFixed(Math.abs(x) >= 1 ? 2 : 8);
+        let lastAcc = cur('[data-currency-source]');
+        let manual = !!(rateIn.value || credIn.value);   // an existing foreign operation keeps its own numbers
+        const recalc = () => { const r = num(rateIn.value), a = sum(amount.value); if (r > 0 && a > 0) credIn.value = money(a * r); };
+        const fetchRate = async () => {
+            const from = amtCur.value, to = cur('[data-currency-source]');
+            if (!from || !to || from === to || manual) return;
+            try {
+                const q = new URLSearchParams({from, to, date: dateIn?.value || ''});
+                const r = (await (await fetch('/money/rate?' + q, {headers: {Accept: 'application/json'}})).json()).rate;
+                if (r && !manual && amtCur.value === from) { rateIn.value = +r.toFixed(r >= 100 ? 2 : 6); recalc(); }
+            } catch (e) { /* no rate: the person types it */ }
+        };
+        const fx = () => {
+            const type = form.querySelector('[name=type]:checked').value;
+            const acc = cur('[data-currency-source]');
+            // another account picked: a sum that was in the old account's currency follows the new one
+            if (acc && acc !== lastAcc && amtCur.value === lastAcc) { lastAcc = acc; amtCur.value = acc; amtCur.dispatchEvent(new Event('change', {bubbles: true})); return; }
+            lastAcc = acc;
+            const accountShown = !$('[data-account]').hidden;
+            show($('[data-amount-cur]'), type !== 'transfer' && accountShown);
+            const foreign = type !== 'transfer' && accountShown && !!acc && amtCur.value !== acc;
+            show(fxBox, foreign);
+            if (foreign) {
+                $('[data-fx-rate-label]').textContent = `${acc} за 1 ${amtCur.value}`;
+                $('[data-fx-acc-cur]').textContent = `(${acc})`;
+                $('[data-fx-credited-label]').textContent = type === 'income' ? 'На счёт поступило' : 'Со счёта списано';
+                if (!rateIn.value) fetchRate();
+            }
+        };
+        rateIn.addEventListener('input', () => { manual = true; recalc(); });
+        credIn.addEventListener('input', () => { manual = true; const c = num(credIn.value), a = sum(amount.value); if (c > 0 && a > 0) rateIn.value = +(c / a).toFixed(6); });
+        amount.addEventListener('input', () => { if (!fxBox.hidden) recalc(); });
+        amtCur.addEventListener('change', () => { manual = false; rateIn.value = ''; credIn.value = ''; });
+        dateIn?.addEventListener('change', () => { if (!manual) { rateIn.value = ''; credIn.value = ''; } });
+        form.addEventListener('change', fx);
+        if (!rateIn.value && num(credIn.value) > 0 && sum(amount.value) > 0) rateIn.value = +(num(credIn.value) / sum(amount.value)).toFixed(6);
+        fx();
+    }
 
     // exchange: amount × rate = received, editing either side updates the other
     const to = $('[data-fx-to]'), rate = $('[data-fx-rate]');

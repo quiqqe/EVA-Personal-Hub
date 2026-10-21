@@ -17,6 +17,7 @@
     <span class="op-sum {{ o.type }}">
         {{ sign }}{{ shown|money(o.currency) }}
         {% if shown != o.amount %}<small>из {{ o.amount|money(o.currency) }}</small>{% endif %}
+        {% if o.origCurrency %}<small>{{ o.origAmount|money(o.origCurrency) }}</small><small>{{ fx_rate(o.origAmount, o.origCurrency, o.amount, o.currency) }}</small>{% endif %}
         {% if o.toAccount and o.toAccount.currency != o.currency %}<small>→ {{ o.toAmount|money(o.toAccount.currency) }}</small><small>{{ fx_rate(o.amount, o.currency, o.toAmount, o.toAccount.currency) }}</small>{% endif %}
     </span>
 </a>

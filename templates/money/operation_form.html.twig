@@ -3,6 +3,7 @@
 {% set recurring = recurring|default(false) %}
 {% if not recurring %}
     {% set split = post.split is defined or (not post and o.splits|length > 0) %}
+    {% set entered = split_entered(o) %}
     {% set byUser = {} %}
     {% for sp in o.splits %}{% set byUser = byUser|merge({(sp.user.id.toRfc4122): sp}) %}{% endfor %}
     {% set mode = post.split_mode ?? o.splitMode ?? 'equal' %}
@@ -19,10 +20,21 @@
         {% endfor %}
     </div>
 
-    <label class="amount">Сумма
-        <input name="amount" inputmode="decimal" autocomplete="off" required value="{{ post.amount ?? (o.amount ? o.amount|money_input(recurring ? o.account.currency : o.currency) : '') }}" placeholder="0" {{ isNew ? 'autofocus' }}>
-        <small class="muted">Можно считать: 250+120</small>
-    </label>
+    {# the sum as it was paid/received; its currency may differ from the account's #}
+    {% set enteredCur = recurring ? null : (post.amount_currency ?? o.origCurrency ?? (o.account ? o.account.currency : null)) %}
+    {% set enteredAmount = recurring ? (o.amount ? o.amount|money_input(o.account.currency) : '') : (o.origAmount is not null ? o.origAmount|money_input(o.origCurrency) : (o.amount ? o.amount|money_input(o.currency) : '')) %}
+    <div class="amount-row">
+        <label class="amount">Сумма
+            <input name="amount" inputmode="decimal" autocomplete="off" required value="{{ post.amount ?? enteredAmount }}" placeholder="0" {{ isNew ? 'autofocus' }}>
+        </label>
+        {% if not recurring %}
+        <label class="amount-cur" data-amount-cur>Валюта
+            {% include '_currency_select.html.twig' with {name: 'amount_currency', value: enteredCur ?? scope.currency, short: true} %}
+        </label>
+        {% endif %}
+    </div>
+    <small class="muted amount-hint">Можно считать: 250+120. Валюта может отличаться от валюты счёта — пересчитаем по курсу.</small>
+
 
     {% if scope.group and not recurring %}
     <div data-show="expense">
@@ -43,11 +55,11 @@
                 <div class="person person-head"><span>Участник</span><span data-col-part>Доля</span><span data-col-paid>Заплатил</span></div>
                 {% for id, u in members %}
                     {% set sp = byUser[id] ?? null %}
-                    {% set partValue = post.part[id] ?? (sp and sp.amount > 0 ? (mode == 'amounts' ? sp.amount|money_input(o.currency) : (sp.weight ?? '')) : '') %}
+                    {% set partValue = post.part[id] ?? (sp and sp.amount > 0 ? (mode == 'amounts' ? (entered.owed[id] ?? 0)|money_input(entered.currency) : (sp.weight ?? '')) : '') %}
                     <div class="person">
                         <label class="check"><input type="checkbox" name="participants[]" value="{{ id }}" data-equal-only {{ id in participants ? 'checked' }}><span>{{ u.name }}{{ u == app.user ? ' (я)' }}</span></label>
                         <input name="part[{{ id }}]" value="{{ partValue }}" inputmode="decimal" data-part data-id="{{ id }}" aria-label="Доля: {{ u.name }}">
-                        <input name="paid[{{ id }}]" value="{{ post.paid[id] ?? (sp and sp.paid > 0 ? sp.paid|money_input(o.currency) : '') }}" inputmode="decimal" placeholder="0" data-paid data-id="{{ id }}" aria-label="Заплатил: {{ u.name }}">
+                        <input name="paid[{{ id }}]" value="{{ post.paid[id] ?? ((entered.paid[id] ?? 0) > 0 ? entered.paid[id]|money_input(entered.currency) : '') }}" inputmode="decimal" placeholder="0" data-paid data-id="{{ id }}" aria-label="Заплатил: {{ u.name }}">
                     </div>
                 {% endfor %}
                 <small class="muted" data-split-hint aria-live="polite"></small>
@@ -65,6 +77,18 @@
         </select>
         {% if not sources %}<a href="{{ path('money_account_new', {scope: scope.key}) }}">Сначала добавьте счёт</a>{% endif %}
     </label>
+
+    {% if not recurring %}
+    <div class="fx fx-foreign" data-fx-foreign>
+        <label>Курс <small class="muted" data-fx-rate-label></small>
+            <input name="fx_rate" inputmode="decimal" autocomplete="off" data-fx-rate2 value="{{ post.fx_rate ?? '' }}">
+        </label>
+        <label><span data-fx-credited-label>На счёт</span> <small class="muted" data-fx-acc-cur></small>
+            <input name="account_amount" inputmode="decimal" autocomplete="off" data-fx-credited value="{{ post.account_amount ?? (o.origAmount is not null ? o.amount|money_input(o.currency) : '') }}">
+        </label>
+        <small class="muted fx-hint">Подставлен рыночный курс на дату операции. Обменник или банк дали другой — впишите его курс или сумму, которая реально пришла на счёт.</small>
+    </div>
+    {% endif %}
 
     <div data-show="transfer">
         <label>Куда

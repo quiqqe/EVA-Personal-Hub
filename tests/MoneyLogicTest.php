@@ -7,6 +7,7 @@ namespace App\Tests;
 use App\Money\Csv;
 use App\Telegram;
 use App\Money\Debts;
+use App\Money\Fx;
 use App\Money\Money;
 use App\Money\Rates;
 use App\Money\Schedule;
@@ -74,6 +75,23 @@ final class MoneyLogicTest extends TestCase
 
         $button = ['callback_query' => ['id' => 'q1', 'data' => 'login:abc', 'from' => ['id' => 42, 'username' => 'roma'], 'message' => ['message_id' => 9, 'chat' => ['id' => 5]]]];
         self::assertSame(['kind' => 'button', 'tgId' => 42, 'name' => 'roma', 'chatId' => 5, 'param' => 'login:abc', 'callbackId' => 'q1', 'messageId' => 9], Telegram::parse($button));
+    }
+
+    public function testForeignAmount(): void
+    {
+        // 1500 USDT at the exchanger's 386.5 → 579 750 AMD
+        self::assertSame(57975000, Fx::amount(1500000000, 'USDT', 'AMD', null, 386.5, 999));
+        // the credited sum the person typed wins over any rate
+        self::assertSame(57000000, Fx::amount(1500000000, 'USDT', 'AMD', 57000000, 386.5, 999));
+        // nothing stated: market rate
+        self::assertSame(999, Fx::amount(1500000000, 'USDT', 'AMD', null, null, 999));
+        self::assertNull(Fx::amount(100, 'XXX', 'AMD', null, null, null));
+        self::assertSame(386.5, Fx::parseRate('386,5'));
+        self::assertSame(1386.5, Fx::parseRate('1 386.5'));
+        self::assertNull(Fx::parseRate(''));
+        self::assertNull(Fx::parseRate('abc'));
+        // shares entered in EUR, kept in the account's AMD without losing a unit
+        self::assertSame(['a' => 1050000, 'b' => 1050001], array_reverse(Debts::proportional(2100001, ['b' => 2500, 'a' => 2500]), true));
     }
 
     public function testInputRoundTrip(): void

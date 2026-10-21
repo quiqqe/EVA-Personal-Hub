@@ -7,7 +7,9 @@ namespace App\Money\Controller;
 use App\Controller\BaseController;
 use App\Money\Entity\Settlement;
 use App\Money\Ledger;
+use App\Money\Fx;
 use App\Money\Money;
+use App\Money\Rates;
 use App\Money\Scope;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -20,7 +22,7 @@ use Symfony\Component\Uid\Uuid;
 final class DebtController extends BaseController
 {
     #[Route('', name: 'money_debts')]
-    public function index(Request $r, Scope $scope, Ledger $ledger, EntityManagerInterface $em): Response
+    public function index(Request $r, Scope $scope, Ledger $ledger, EntityManagerInterface $em, Rates $rates): Response
     {
         \assert($scope->group !== null);
         $members = [];
@@ -41,14 +43,32 @@ final class DebtController extends BaseController
             }
             $from = $members[(string) $p->get('from')] ?? null;
             $to = $members[(string) $p->get('to')] ?? null;
+            // what was handed over, in any currency; the debt it covers is in the debt's currency
             $currency = (string) $p->get('currency');
-            $amount = isset(Money::choices()[$currency]) ? Money::parse((string) $p->get('amount'), $currency) : null;
+            $paidCur = (string) $p->get('paid_currency') ?: $currency;
+            $known = Money::choices();
+            $paid = isset($known[$paidCur]) ? Money::parse((string) $p->get('paid_amount'), $paidCur) : null;
+            $amount = null;
+            if (isset($known[$currency]) && $paid !== null && $paid > 0) {
+                $amount = $paidCur === $currency ? $paid : Fx::amount(
+                    $paid, $paidCur, $currency,
+                    Money::parse((string) $p->get('amount'), $currency),
+                    Fx::parseRate((string) $p->get('fx_rate')),
+                    $rates->convert($paid, $paidCur, $currency),
+                );
+            }
             if (!$from || !$to || $from === $to || $amount === null || $amount <= 0) {
                 $this->addFlash('error', 'Проверьте, кто кому и сколько');
             } else {
-                $em->persist(new Settlement($scope->group, $from, $to, $amount, $currency));
+                $st = new Settlement($scope->group, $from, $to, $amount, $currency);
+                if ($paidCur !== $currency) {
+                    $st->origAmount = $paid;
+                    $st->origCurrency = $paidCur;
+                }
+                $em->persist($st);
                 $em->flush();
-                $this->addFlash('ok', $from->name.' → '.$to->name.': '.Money::format($amount, $currency));
+                $this->addFlash('ok', $from->name.' → '.$to->name.': '.Money::format($amount, $currency)
+                    .($st->origCurrency ? ' ('.Money::format($paid, $paidCur).')' : ''));
             }
 
             return $this->redirectToRoute('money_debts', ['scope' => $scope->key()]);

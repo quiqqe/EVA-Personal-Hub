@@ -139,7 +139,7 @@ final class OperationController extends BaseController
         $response = new StreamedResponse(function () use ($ops): void {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, ['Дата', 'Тип', 'Счёт', 'Сумма', 'Валюта', 'Счёт зачисления', 'Сумма зачисления', 'Категория', 'Комментарий', 'Кто платил'], ';', '"', '');
+            fputcsv($out, ['Дата', 'Тип', 'Счёт', 'Сумма', 'Валюта', 'Исходная сумма', 'Исходная валюта', 'Счёт зачисления', 'Сумма зачисления', 'Категория', 'Комментарий', 'Кто платил'], ';', '"', '');
             foreach ($ops as $o) {
                 fputcsv($out, [
                     $o->date->format('d.m.Y'),
@@ -147,6 +147,8 @@ final class OperationController extends BaseController
                     $o->account?->name,
                     str_replace('.', ',', Money::toInput($o->type === 'income' ? $o->amount : -$o->amount, $o->currency)),
                     $o->currency,
+                    $o->origCurrency ? str_replace('.', ',', Money::toInput($o->type === 'income' ? $o->origAmount : -$o->origAmount, $o->origCurrency)) : '',
+                    $o->origCurrency,
                     $o->toAccount?->name,
                     $o->toAccount ? str_replace('.', ',', Money::toInput((int) $o->toAmount, $o->toAccount->currency)) : '',
                     $o->category?->name,

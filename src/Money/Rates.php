@@ -47,13 +47,21 @@ final class Rates
         if ($from === $to) {
             return $minor;
         }
+        $rate = $this->rate($from, $to, $on);
+
+        return $rate === null ? null : (int) round($minor / 10 ** Money::digits($from) * $rate * 10 ** Money::digits($to));
+    }
+
+    /** How many $to one $from is worth on $on (today when null or not in the past). */
+    public function rate(string $from, string $to, ?\DateTimeImmutable $on = null): ?float
+    {
+        if ($from === $to) {
+            return 1.0;
+        }
         $today = $this->all();
         $r = $on && $on < new \DateTimeImmutable('today') ? $this->day($on) + $today : $today;
-        if (!isset($r[$from], $r[$to])) {
-            return null;
-        }
 
-        return (int) round($minor / 10 ** Money::digits($from) * $r[$from] / $r[$to] * 10 ** Money::digits($to));
+        return isset($r[$from], $r[$to]) ? $r[$from] / $r[$to] : null;
     }
 
     /**

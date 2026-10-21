@@ -24,6 +24,18 @@ final class DashboardController extends BaseController
         return $this->redirectToRoute('money', ['scope' => 'me']);
     }
 
+    /** Market rate for the forms: GET /money/rate?from=USDT&to=AMD&date=2026-10-21 */
+    #[Route('/money/rate', name: 'money_rate', priority: 10)]
+    public function rate(Request $r, Rates $rates): Response
+    {
+        $from = (string) $r->query->get('from');
+        $to = (string) $r->query->get('to');
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $r->query->get('date')) ?: null;
+        $known = Money::choices();
+
+        return $this->json(['rate' => isset($known[$from], $known[$to]) ? $rates->rate($from, $to, $date) : null]);
+    }
+
     #[Route('/money/{scope}', name: 'money', requirements: ['scope' => 'me|[0-9a-f-]{36}'])]
     public function index(Request $r, Scope $scope, Ledger $ledger, Rates $rates, EntityManagerInterface $em): Response
     {

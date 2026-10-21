@@ -474,3 +474,13 @@ label > .ss { margin-top: 6px; }
 .account-sums small { display: block; }
 .account-sums b { font: 700 17px var(--font-display); font-variant-numeric: tabular-nums; }
 .account-card .actions { margin: var(--s3) 0 var(--s2); }
+
+/* amount + its currency */
+.amount-row { display: grid; grid-template-columns: 1fr 112px; gap: var(--s3); align-items: end; }
+.amount-row .amount { margin-bottom: 0; }
+.amount-row .amount-cur { margin-bottom: 0; }
+.amount-row .amount-cur .ss-btn { min-height: 64px; font: 700 18px var(--font-display); text-align: center; padding-right: 30px; }
+.amount-hint { display: block; margin: 6px 0 var(--s4); font-weight: 500; }
+.fx-foreign { padding: var(--s4) var(--s4) 0; margin-bottom: var(--s4); border-radius: var(--r); background: var(--accent-soft); }
+.fx-foreign input { background-color: var(--surface); }
+.fx-foreign .fx-hint { margin: -4px 0 var(--s4); }

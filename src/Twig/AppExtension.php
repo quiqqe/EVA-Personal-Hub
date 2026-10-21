@@ -6,6 +6,8 @@ namespace App\Twig;
 
 use App\Entity\User;
 use App\Money\Ledger;
+use App\Money\Debts;
+use App\Money\Entity\Operation;
 use App\Money\Money;
 use App\Telegram;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -44,6 +46,29 @@ final class AppExtension
         $fmt->setAttribute(\NumberFormatter::MAX_FRACTION_DIGITS, $rate >= 100 ? 2 : 4);
 
         return "1 $one = ".$fmt->format($rate)." $other";
+    }
+
+    /**
+     * A split expense's shares and payments in the currency they were typed in (the bill's), for the edit form.
+     *
+     * @return array{owed: array<string, int>, paid: array<string, int>, currency: string}
+     */
+    #[AsTwigFunction('split_entered')]
+    public static function splitEntered(Operation $o): array
+    {
+        $owed = $paid = [];
+        foreach ($o->splits as $s) {
+            $owed[(string) $s->user->id] = $s->amount;
+            $paid[(string) $s->user->id] = $s->paid;
+        }
+        $owed = array_filter($owed);
+        $paid = array_filter($paid);
+        if ($o->origAmount !== null) {
+            $owed = $owed ? Debts::proportional($o->origAmount, $owed) : [];
+            $paid = $paid ? Debts::proportional($o->origAmount, $paid) : [];
+        }
+
+        return ['owed' => $owed, 'paid' => $paid, 'currency' => $o->origCurrency ?? $o->currency];
     }
 
     #[AsTwigFilter('money_input')]

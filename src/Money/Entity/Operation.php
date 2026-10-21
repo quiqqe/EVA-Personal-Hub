@@ -46,6 +46,13 @@ class Operation
     #[ORM\ManyToOne]
     public ?Account $toAccount = null;
 
+    /** Paid/received in another currency than the account's: the original sum (amount is what hit the account) */
+    #[ORM\Column(type: 'bigint', nullable: true)]
+    public ?int $origAmount = null;
+
+    #[ORM\Column(length: 10, nullable: true)]
+    public ?string $origCurrency = null;
+
     /** Credited to toAccount, differs from amount when currencies differ */
     #[ORM\Column(type: 'bigint', nullable: true)]
     public ?int $toAmount = null;

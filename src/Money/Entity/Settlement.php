@@ -21,6 +21,13 @@ class Settlement
     #[ORM\Column(type: 'date_immutable')]
     public \DateTimeImmutable $date;
 
+    /** Paid back in another currency: what was actually handed over ($amount is in the debt's currency) */
+    #[ORM\Column(type: 'bigint', nullable: true)]
+    public ?int $origAmount = null;
+
+    #[ORM\Column(length: 10, nullable: true)]
+    public ?string $origCurrency = null;
+
     public function __construct(
         #[ORM\ManyToOne, ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
         public Group $group,

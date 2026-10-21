@@ -16,8 +16,9 @@
                 <span>{{ members[p.from].name ?? '?' }} → {{ members[p.to].name ?? '?' }}: <b>{{ p.amount|money(c) }}</b></span>
                 <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
                 <input type="hidden" name="from" value="{{ p.from }}"><input type="hidden" name="to" value="{{ p.to }}">
-                <input type="hidden" name="currency" value="{{ c }}"><input type="hidden" name="amount" value="{{ p.amount|money_input(c) }}">
+                <input type="hidden" name="currency" value="{{ c }}"><input type="hidden" name="paid_currency" value="{{ c }}"><input type="hidden" name="paid_amount" value="{{ p.amount|money_input(c) }}">
                 <button class="btn small primary" data-confirm="Отметить, что долг возвращён?">Рассчитались</button>
+                <a class="btn small" href="#settle" data-settle-fill='{{ {from: p.from, to: p.to, currency: c, amount: p.amount|money_input(c)}|json_encode }}' title="Отдали в другой валюте">💱</a>
             </form>
         {% endfor %}
     {% else %}
@@ -28,13 +29,21 @@
 <section class="card"><p class="muted">Пока нет разделённых трат. При вводе расхода в группе отметьте «👥 Разделить».</p></section>
 {% endfor %}
 
-<form method="post" class="card stack">
+<form method="post" class="card stack" id="settle" data-settle>
     <h2>Записать возврат долга</h2>
     <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
     <label>Кто отдал <select name="from">{% for id, u in members %}<option value="{{ id }}" {{ u == app.user ? 'selected' }}>{{ u.name }}</option>{% endfor %}</select></label>
     <label>Кому <select name="to">{% for id, u in members %}<option value="{{ id }}">{{ u.name }}</option>{% endfor %}</select></label>
-    <input name="amount" inputmode="decimal" placeholder="Сумма" required>
-    {% include '_currency_select.html.twig' with {value: scope.currency} %}
+    <div class="amount-row">
+        <label>Сколько отдал <input name="paid_amount" inputmode="decimal" placeholder="Сумма" required></label>
+        <label>Валюта {% include '_currency_select.html.twig' with {name: 'paid_currency', value: scope.currency, short: true} %}</label>
+    </div>
+    <label>Какой долг закрывает (валюта долга) {% include '_currency_select.html.twig' with {name: 'currency', value: scope.currency} %}</label>
+    <div class="fx fx-foreign" data-settle-fx hidden>
+        <label>Курс <small class="muted" data-settle-rate-label></small><input name="fx_rate" inputmode="decimal" autocomplete="off"></label>
+        <label>Долга закрыто <small class="muted" data-settle-cur></small><input name="amount" inputmode="decimal" autocomplete="off"></label>
+        <small class="muted fx-hint">Пусто — пересчитаем по рыночному курсу на сегодня.</small>
+    </div>
     <button class="btn primary small">Записать</button>
 </form>
 
@@ -44,7 +53,7 @@
     {% for st in settlements %}
         <form method="post" class="row">
             <span>{{ st.date|date('d.m.Y') }} · {{ st.from.name }} → {{ st.to.name }}</span>
-            <b>{{ st.amount|money(st.currency) }}</b>
+            <b>{{ st.amount|money(st.currency) }}{% if st.origCurrency %} <small class="muted">({{ st.origAmount|money(st.origCurrency) }})</small>{% endif %}</b>
             <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
             <button class="btn small" name="delete" value="{{ st.id }}" data-confirm="Удалить запись?">✕</button>
         </form>

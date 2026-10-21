@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\Request;
 /** Reads the operation form (also used for recurring templates) into the entity. */
 final class OperationForm
 {
-    public function __construct(private readonly Ledger $ledger)
+    public function __construct(private readonly Ledger $ledger, private readonly Rates $rates)
     {
     }
 
@@ -57,11 +57,34 @@ final class OperationForm
             $t->currency = $currency;
         }
 
-        $amount = Money::parse((string) $p->get('amount'), $currency);
+        // a sum in another currency than the account's: salary in USDT onto an AMD card, a card payment in EUR
+        $entered = (string) $p->get('amount_currency');
+        $foreign = $t instanceof Operation && $t->type !== 'transfer' && $t->account !== null
+            && $entered !== '' && $entered !== $currency && isset(Money::choices()[$entered]);
+        $amount = Money::parse((string) $p->get('amount'), $foreign ? $entered : $currency);
         if ($amount === null || $amount <= 0) {
             $errors[] = 'Введите сумму больше нуля';
         }
         $t->amount = (int) $amount;
+        if ($t instanceof Operation) {
+            $t->origAmount = $t->origCurrency = null;
+        }
+        if ($foreign && $amount > 0) {
+            $on = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $p->get('date')) ?: new \DateTimeImmutable('today');
+            $credited = Fx::amount(
+                $amount, $entered, $currency,
+                Money::parse((string) $p->get('account_amount'), $currency),
+                Fx::parseRate((string) $p->get('fx_rate')),
+                $this->rates->convert($amount, $entered, $currency, $on),
+            );
+            if ($credited === null || $credited <= 0) {
+                $errors[] = "Нет курса $entered → $currency: укажите курс или сумму по счёту";
+            } else {
+                $t->origAmount = $amount;
+                $t->origCurrency = $entered;
+                $t->amount = $credited;
+            }
+        }
 
         if ($t->type === 'transfer') {
             $to = $this->pick($this->ledger->reachableAccounts($s->me), (string) $p->get('to_account'))
@@ -127,6 +150,9 @@ final class OperationForm
             return ['Расход с общего счёта делить не нужно — выберите свой счёт'];
         }
         $mode = \array_key_exists((string) $p->get('split_mode'), Debts::MODES) ? (string) $p->get('split_mode') : 'equal';
+        // shares and payments are typed in the currency of the bill (EUR dinner), debts are kept in the account's
+        $total = $t->origAmount ?? $t->amount;
+        $cur = $t->origCurrency ?? $t->currency;
         $parts = $p->all('part');
         $checked = array_map('strval', $p->all('participants'));
         $values = [];
@@ -134,29 +160,34 @@ final class OperationForm
             $id = (string) $u->id;
             $values[$id] = match ($mode) {
                 'equal' => \in_array($id, $checked, true) ? 1 : 0,
-                'amounts' => Money::parse((string) ($parts[$id] ?? ''), $t->currency) ?? 0,
+                'amounts' => Money::parse((string) ($parts[$id] ?? ''), $cur) ?? 0,
                 default => (float) str_replace([',', ' ', "\u{00A0}"], ['.', '', ''], (string) ($parts[$id] ?? '')),
             };
         }
         try {
-            $owed = Debts::split($t->amount, $mode, $values);
+            $owed = Debts::split($total, $mode, $values);
         } catch (\InvalidArgumentException $e) {
             return [$e->getMessage()];
         }
 
         $paid = [];
         if ($payer) {
-            $paid[(string) $payer->id] = $t->amount;
+            $paid[(string) $payer->id] = $total;
         } else {
             foreach ($s->members() as $u) {
-                $v = Money::parse((string) ($p->all('paid')[(string) $u->id] ?? ''), $t->currency) ?? 0;
+                $v = Money::parse((string) ($p->all('paid')[(string) $u->id] ?? ''), $cur) ?? 0;
                 if ($v > 0) {
                     $paid[(string) $u->id] = $v;
                 }
             }
-            if (array_sum($paid) !== $t->amount) {
-                return ['Кто сколько заплатил — в сумме должно быть '.Money::format($t->amount, $t->currency)];
+            if (array_sum($paid) !== $total) {
+                return ['Кто сколько заплатил — в сумме должно быть '.Money::format($total, $cur)];
             }
+        }
+        if ($t->origAmount !== null) {
+            // same proportions in the account's currency, not a unit lost
+            $owed = Debts::proportional($t->amount, $owed);
+            $paid = Debts::proportional($t->amount, $paid);
         }
 
         $t->splitMode = $mode;
