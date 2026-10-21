@@ -73,4 +73,17 @@ final class AppExtension
     {
         return Money::choices();
     }
+
+    /** @return array<string, array<string, string>> group title => code => label, for <optgroup>s */
+    #[AsTwigFunction('currency_groups')]
+    public static function currencyGroups(): array
+    {
+        $out = ['Популярные' => [], 'Криптовалюты' => [], 'Другие валюты' => []];
+        foreach (Money::choices() as $code => $label) {
+            $group = Money::isCrypto($code) ? 'Криптовалюты' : (\in_array($code, Money::POPULAR, true) ? 'Популярные' : 'Другие валюты');
+            $out[$group][$code] = $label;
+        }
+
+        return $out;
+    }
 }

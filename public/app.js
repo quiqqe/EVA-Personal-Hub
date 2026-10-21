@@ -1,5 +1,126 @@
 // Progressive enhancement only: every form works without JS.
+
+// Long <select>s (10+ options) become a searchable picker. The native select stays in the form and keeps the value;
+// the picker only reads its options (respecting hidden optgroups/options) and sets select.value + fires "change".
+const norm = s => s.toLowerCase().replace(/ё/g, 'е').trim();
+function searchableSelect(sel) {
+    const wrap = document.createElement('div');
+    wrap.className = 'ss' + (sel.closest('.in-switch') ? ' ss-pill' : '');
+    sel.before(wrap);
+    wrap.append(sel);
+    sel.classList.add('ss-native');
+    sel.tabIndex = -1;
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'ss-btn';
+    btn.setAttribute('aria-haspopup', 'listbox');
+    btn.setAttribute('aria-label', sel.getAttribute('aria-label') || sel.closest('label')?.firstChild?.textContent?.trim() || 'Выбор');
+    const pop = document.createElement('div');
+    pop.className = 'ss-pop';
+    pop.hidden = true;
+    pop.innerHTML = '<div class="ss-head"><input type="search" class="ss-search" placeholder="Поиск…" autocomplete="off" aria-label="Поиск"><button type="button" class="ss-close" aria-label="Закрыть">✕</button></div><ul class="ss-list" role="listbox"></ul>';
+    const search = pop.querySelector('.ss-search'), list = pop.querySelector('.ss-list');
+    // the visible button takes the select's place for <label>s: label text opens the picker
+    if (sel.id) { btn.id = sel.id; sel.removeAttribute('id'); }
+    wrap.prepend(btn);
+    wrap.append(pop);
+
+    const sync = () => {
+        btn.textContent = sel.selectedOptions[0]?.textContent.trim() || '—';
+        btn.disabled = sel.disabled;
+    };
+    let items = [], active = -1;
+
+    const render = () => {
+        const q = norm(search.value);
+        list.innerHTML = '';
+        items = [];
+        const add = (opt) => {
+            if (opt.hidden || opt.disabled) return false;
+            const text = opt.dataset.search || opt.textContent;
+            if (q && !norm(text + ' ' + opt.value).includes(q)) return false;
+            const li = document.createElement('li');
+            li.className = 'ss-opt' + (opt.selected ? ' selected' : '');
+            li.setAttribute('role', 'option');
+            li.setAttribute('aria-selected', String(opt.selected));
+            li.textContent = opt.dataset.search && opt.dataset.search !== opt.textContent ? opt.dataset.search : opt.textContent;
+            li.dataset.value = opt.value;
+            li.addEventListener('mousedown', e => e.preventDefault());
+            li.addEventListener('click', () => choose(opt.value));
+            items.push(li);
+            return li;
+        };
+        for (const node of sel.children) {
+            if (node.tagName === 'OPTGROUP') {
+                if (node.hidden) continue;
+                const lis = [...node.children].map(add).filter(Boolean);
+                if (lis.length) {
+                    const h = document.createElement('li');
+                    h.className = 'ss-group';
+                    h.textContent = node.label;
+                    list.append(h, ...lis);
+                }
+            } else {
+                const li = add(node);
+                if (li) list.append(li);
+            }
+        }
+        if (!items.length) list.innerHTML = '<li class="ss-empty">Ничего не найдено</li>';
+        active = Math.max(0, items.findIndex(li => li.classList.contains('selected')));
+        if (q) active = 0;
+        highlight();
+    };
+    const highlight = () => items.forEach((li, i) => {
+        li.classList.toggle('active', i === active);
+        if (i === active) li.scrollIntoView({block: 'nearest'});
+    });
+    const open = () => {
+        if (sel.disabled) return;
+        document.querySelectorAll('.ss.open').forEach(o => o !== wrap && o.ssClose());
+        pop.hidden = false;
+        wrap.classList.add('open');
+        document.body.classList.toggle('ss-sheet-open', matchMedia('(max-width: 640px)').matches);
+        search.value = '';
+        render();
+        search.focus({preventScroll: true});
+    };
+    const close = () => {
+        pop.hidden = true;
+        wrap.classList.remove('open');
+        document.body.classList.remove('ss-sheet-open');
+    };
+    const choose = (value) => {
+        if (sel.value !== value) {
+            sel.value = value;
+            sel.dispatchEvent(new Event('change', {bubbles: true}));
+        }
+        sync();
+        close();
+        btn.focus();
+    };
+    wrap.ssClose = close;
+
+    btn.addEventListener('click', () => (pop.hidden ? open() : close()));
+    pop.querySelector('.ss-close').addEventListener('click', () => { close(); btn.focus(); });
+    search.addEventListener('input', render);
+    search.addEventListener('keydown', e => {
+        if (e.key === 'ArrowDown') { active = Math.min(items.length - 1, active + 1); highlight(); e.preventDefault(); }
+        else if (e.key === 'ArrowUp') { active = Math.max(0, active - 1); highlight(); e.preventDefault(); }
+        else if (e.key === 'Enter') { if (items[active]) choose(items[active].dataset.value); e.preventDefault(); }
+        else if (e.key === 'Escape') { close(); btn.focus(); }
+    });
+    btn.addEventListener('keydown', e => { if (['ArrowDown', 'Enter', ' '].includes(e.key) && pop.hidden) { open(); e.preventDefault(); } });
+    document.addEventListener('mousedown', e => { if (!pop.hidden && !wrap.contains(e.target)) close(); });
+    sel.addEventListener('change', sync);
+    // the operation form enables/disables and re-filters selects as you switch type
+    new MutationObserver(sync).observe(sel, {attributes: true, attributeFilter: ['disabled']});
+    sync();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('select:not([data-nav])').forEach(sel => { if (sel.options.length >= 10) searchableSelect(sel); });
+
     // theme: system → light → dark, remembered in this browser
     const THEMES = {'': ['◐', 'системная'], light: ['☀', 'светлая'], dark: ['☾', 'тёмная']};
     const setTheme = t => {
@@ -88,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // only this type's categories; drop a selection of the other kind
         const select = $('[name=category]');
         select.querySelectorAll('optgroup').forEach(g => { g.hidden = g.dataset.kind !== type; });
-        if (select.selectedOptions[0]?.parentElement.hidden) select.value = '';
+        if (select.selectedOptions[0]?.parentElement.hidden) { select.value = ''; select.dispatchEvent(new Event('change', {bubbles: true})); }
 
         const split = $('[data-split]');
         const splitting = !!split && type === 'expense' && split.checked;

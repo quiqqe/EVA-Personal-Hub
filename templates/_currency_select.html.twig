@@ -1,4 +1,8 @@
-{# short: option text is just the code, for compact pickers #}
+{# short: option text is just the code, for compact pickers; data-search keeps the full name searchable #}
 <select name="{{ name|default('currency') }}" {{ id is defined ? 'id=' ~ id }} {{ disabled|default(false) ? 'disabled' }} aria-label="Валюта">
-    {% for code, label in currencies() %}<option value="{{ code }}" {{ code == value ? 'selected' }}>{{ short|default(false) ? code : label }}</option>{% endfor %}
+    {% for group, items in currency_groups() %}
+        <optgroup label="{{ group }}">
+            {% for code, label in items %}<option value="{{ code }}" data-search="{{ label }}" {{ code == value ? 'selected' }}>{{ short|default(false) ? code : label }}</option>{% endfor %}
+        </optgroup>
+    {% endfor %}
 </select>
