@@ -36,7 +36,7 @@ final class AppExtension
     #[AsTwigFunction('fx_rate')]
     public static function fxRate(int $amount, string $from, int $toAmount, string $to): string
     {
-        if ($amount === 0) {
+        if ($amount === 0 || $toAmount === 0) {
             return '';
         }
         $rate = $toAmount / 10 ** Money::digits($to) / ($amount / 10 ** Money::digits($from));

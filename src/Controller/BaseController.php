@@ -6,10 +6,39 @@ namespace App\Controller;
 
 use App\Entity\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use App\Entity\Group;
+use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Security\Http\Util\TargetPathTrait;
 
 abstract class BaseController extends AbstractController
 {
+    use TargetPathTrait;
+
+    public static function getSubscribedServices(): array
+    {
+        return parent::getSubscribedServices() + ['doctrine' => '?'.ManagerRegistry::class];
+    }
+
+    /** Where to go right after signing in: the page that asked for it (an invite link), else the hub. */
+    protected function afterLogin(Request $r): string
+    {
+        $target = $this->getTargetPath($r->getSession(), 'main');
+        $this->removeTargetPath($r->getSession(), 'main');
+
+        return $target && str_starts_with((string) parse_url($target, PHP_URL_PATH), '/') ? $target : $this->generateUrl('hub');
+    }
+
+    /** The group an unsigned visitor was invited to, to say so on the sign-in pages. */
+    protected function invitedTo(Request $r): ?Group
+    {
+        $target = (string) $this->getTargetPath($r->getSession(), 'main');
+        if (!preg_match('#/join/([0-9a-f]{32})#', $target, $m)) {
+            return null;
+        }
+
+        return $this->container->get('doctrine')->getRepository(Group::class)->findOneBy(['inviteToken' => $m[1]]);
+    }
     protected function me(): User
     {
         $u = $this->getUser();

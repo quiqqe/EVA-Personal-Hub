@@ -137,6 +137,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
     document.querySelectorAll('[name=theme_choice]').forEach(r => r.addEventListener('change', () => setTheme(r.value)));
 
+    // sign-up: preselect the base currency from the time zone (Yerevan → AMD, Almaty → KZT…), only if untouched
+    const tzCurrency = {'Asia/Yerevan': 'AMD', 'Europe/Moscow': 'RUB', 'Asia/Almaty': 'KZT', 'Asia/Qostanay': 'KZT', 'Europe/Minsk': 'BYN', 'Asia/Tbilisi': 'GEL', 'Europe/Istanbul': 'TRY', 'Asia/Dubai': 'AED', 'Asia/Tashkent': 'UZS', 'Asia/Bishkek': 'KGS', 'Europe/Belgrade': 'RSD', 'Asia/Bangkok': 'THB', 'Europe/Kyiv': 'UAH'};
+    const guess = tzCurrency[Intl.DateTimeFormat().resolvedOptions().timeZone];
+    const signupCurrency = document.querySelector('.auth-form select[name=currency]');
+    if (guess && signupCurrency && !signupCurrency.dataset.touched && [...signupCurrency.options].some(o => o.value === guess)) {
+        signupCurrency.value = guess;
+        signupCurrency.dispatchEvent(new Event('change', {bubbles: true}));
+    }
+    signupCurrency?.addEventListener('change', () => { signupCurrency.dataset.touched = '1'; });
+
     // show / hide password
     document.querySelectorAll('[data-pw-toggle]').forEach(b => b.addEventListener('click', () => {
         const input = document.getElementById(b.getAttribute('aria-controls'));
@@ -262,8 +272,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 $('[data-col-paid]').hidden = !many;
                 $('[data-people]').classList.toggle('with-part', mode !== 'equal');
                 $('[data-people]').classList.toggle('with-paid', many);
-                const mine = form.querySelector(`[data-paid][data-id="${payer.dataset.me}"]`);
-                iPay = many ? sum(mine.value) > 0 : payer.value === payer.dataset.me;
+                // the card is debited for its owner: me for my card, the payer for their own card when correcting their bill
+                const owner = $('[name=account]').selectedOptions[0]?.dataset.owner || payer.dataset.me;
+                const ownerPaid = form.querySelector(`[data-paid][data-id="${owner}"]`);
+                iPay = many ? sum(ownerPaid?.value || '') > 0 : payer.value === owner;
                 hint(mode, many);
             }
         }
@@ -290,6 +302,14 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('change', update);
     form.addEventListener('input', e => { if (e.target.matches('[data-part], [data-paid], [name=amount]')) update(); });
     update();
+
+    // a recurring template starting in the past: ask what to do with the missed dates
+    const recStart = $('[data-recurring-start]'), backfill = $('[data-backfill]');
+    if (recStart && backfill) {
+        const sync = () => { backfill.hidden = !(recStart.value && recStart.value < recStart.dataset.today); };
+        recStart.addEventListener('input', sync);
+        sync();
+    }
 
     // frequent categories as one-tap chips (the select below stays for the rest)
     const chips = $('[data-cat-chips]'), catSelect = $('[name=category]');

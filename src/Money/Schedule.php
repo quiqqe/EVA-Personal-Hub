@@ -8,6 +8,17 @@ final class Schedule
 {
     public const PERIODS = ['day' => 'Каждый день', 'week' => 'Каждую неделю', 'month' => 'Каждый месяц', 'year' => 'Каждый год'];
 
+    /** Index of the first occurrence on or after $from (counting from $start). */
+    public static function firstOnOrAfter(\DateTimeImmutable $start, string $period, \DateTimeImmutable $from): int
+    {
+        $n = 0;
+        while (self::occurrence($start, $period, $n) < $from && $n < 100000) {
+            ++$n;
+        }
+
+        return $n;
+    }
+
     /** The n-th date (0 = start). Day 31 in a short month falls on its last day instead of spilling over. */
     public static function occurrence(\DateTimeImmutable $start, string $period, int $n): \DateTimeImmutable
     {

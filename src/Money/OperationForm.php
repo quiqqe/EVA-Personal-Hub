@@ -19,7 +19,7 @@ final class OperationForm
     }
 
     /** @return list<string> errors; the entity is only valid to save when empty */
-    public function apply(Request $r, Scope $s, Operation|Recurring $t): array
+    public function apply(Request $r, Scope $s, Operation|Recurring $t, bool $isNew = true): array
     {
         $p = $r->request;
         $errors = [];
@@ -28,13 +28,21 @@ final class OperationForm
         $split = $t instanceof Operation && $s->group && $t->type === 'expense' && $p->getBoolean('split');
         // paid_by: a member, or "many" with paid[member] amounts
         $manyPayers = $split && $p->get('paid_by') === 'many';
-        $payer = $split && !$manyPayers ? ($this->pick($s->members(), (string) $p->get('paid_by')) ?? $s->me) : $s->me;
-        $iPay = !$split || ($manyPayers
-            ? (Money::parse((string) ($p->all('paid')[(string) $s->me->id] ?? ''), 'RUB') ?? 0) > 0
-            : $payer === $s->me);
+        $people = $t instanceof Operation ? self::people($s, $t) : $s->members();
+        $payer = $split && !$manyPayers ? ($this->pick($people, (string) $p->get('paid_by')) ?? $s->me) : $s->me;
 
-        // only others paid: we don't know their accounts, only the currency
-        if ($split && !$iPay) {
+        $postedAccount = (string) $p->get('account');
+        $account = $this->pick($this->ledger->sourceAccounts($s), $postedAccount)
+            // keep an archived or someone else's account the operation already has
+            ?? ((string) $t->account?->id === $postedAccount ? $t->account : null);
+        // the card is debited for its owner (me when it's mine; the payer's own card when someone corrects their bill)
+        $owner = $account?->user ?? $s->me;
+        $ownerPays = !$split || ($account !== null && ($manyPayers
+            ? (Money::parse((string) ($p->all('paid')[(string) $owner->id] ?? ''), 'RUB') ?? 0) > 0
+            : $payer === $owner));
+
+        // only others paid from cards we can't see: no account, just the currency
+        if ($split && !$ownerPays) {
             $t->account = null;
             $currency = (string) $p->get('currency');
             if (!isset(Money::choices()[$currency])) {
@@ -42,9 +50,6 @@ final class OperationForm
                 $currency = $s->currency();
             }
         } else {
-            $account = $this->pick($this->ledger->sourceAccounts($s), (string) $p->get('account'))
-                // keep an archived or someone else's account the operation already has
-                ?? ((string) $t->account?->id === (string) $p->get('account') ? $t->account : null);
             if (!$account) {
                 $errors[] = 'Выберите счёт';
 
@@ -71,7 +76,11 @@ final class OperationForm
             // a template has no rate yet: each payment is converted at its own day's market rate
             $t->origAmount = $amount;
             $t->origCurrency = $entered;
-            $t->amount = $this->rates->convert($amount, $entered, $currency) ?? 0;
+            $estimate = $this->rates->convert($amount, $entered, $currency);
+            if (!$estimate) {
+                $errors[] = "Сейчас нет курса $entered → $currency — попробуйте позже или задайте сумму в валюте счёта";
+            }
+            $t->amount = (int) $estimate;
         } elseif ($foreign && $amount > 0) {
             $on = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $p->get('date')) ?: new \DateTimeImmutable('today');
             $credited = Fx::amount(
@@ -127,16 +136,19 @@ final class OperationForm
             return $errors;
         }
 
-        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $p->get('date'));
-        $date ? $t->date = $date : $errors[] = 'Укажите дату';
-        $t->group = $s->group;
+        $date = Dates::parse((string) $p->get('date'), '2000-01-01', '+1 year');
+        $date ? $t->date = $date : $errors[] = 'Укажите дату (с 2000 года и не дальше чем через год)';
+        // a new operation belongs to the space it's entered in; an existing one stays where it is
+        if ($isNew) {
+            $t->group = $s->group;
+        }
 
         $t->splits->clear();
         $t->paidBy = null;
         $t->splitMode = null;
         $t->accountAmount = null;
         if ($split && $t->amount > 0) {
-            array_push($errors, ...$this->applySplit($p, $s, $t, $manyPayers ? null : $payer));
+            array_push($errors, ...$this->applySplit($p, $s, $t, $manyPayers ? null : $payer, $people));
         }
 
         return $errors;
@@ -147,7 +159,7 @@ final class OperationForm
      *
      * @return list<string> errors
      */
-    private function applySplit(InputBag $p, Scope $s, Operation $t, ?User $payer): array
+    private function applySplit(InputBag $p, Scope $s, Operation $t, ?User $payer, array $people): array
     {
         if ($t->account?->group) {
             return ['Расход с общего счёта делить не нужно — выберите свой счёт'];
@@ -159,7 +171,7 @@ final class OperationForm
         $parts = $p->all('part');
         $checked = array_map('strval', $p->all('participants'));
         $values = [];
-        foreach ($s->members() as $u) {
+        foreach ($people as $u) {
             $id = (string) $u->id;
             $values[$id] = match ($mode) {
                 'equal' => \in_array($id, $checked, true) ? 1 : 0,
@@ -177,7 +189,7 @@ final class OperationForm
         if ($payer) {
             $paid[(string) $payer->id] = $total;
         } else {
-            foreach ($s->members() as $u) {
+            foreach ($people as $u) {
                 $v = Money::parse((string) ($p->all('paid')[(string) $u->id] ?? ''), $cur) ?? 0;
                 if ($v > 0) {
                     $paid[(string) $u->id] = $v;
@@ -195,9 +207,10 @@ final class OperationForm
 
         $t->splitMode = $mode;
         $t->paidBy = $payer;
-        $mine = $paid[(string) $s->me->id] ?? 0;
-        $t->accountAmount = $t->account && $mine !== $t->amount ? $mine : null;
-        foreach ($s->members() as $u) {
+        // what left the card is its owner's part of the payments
+        $fromCard = $t->account ? ($paid[(string) ($t->account->user ?? $s->me)->id] ?? 0) : 0;
+        $t->accountAmount = $t->account && $fromCard !== $t->amount ? $fromCard : null;
+        foreach ($people as $u) {
             $id = (string) $u->id;
             if (($owed[$id] ?? 0) > 0 || ($paid[$id] ?? 0) > 0) {
                 $weight = \in_array($mode, ['percent', 'shares'], true) && ($owed[$id] ?? 0) > 0 ? (float) $values[$id] : null;
@@ -226,11 +239,26 @@ final class OperationForm
         return null;
     }
 
+    /**
+     * Who can take part in a split: current members plus anyone already in this bill (people who left keep their share).
+     *
+     * @return list<User>
+     */
+    public static function people(Scope $s, ?Operation $o = null): array
+    {
+        $out = [];
+        foreach ([...$s->members(), ...($o ? array_map(fn (Split $sp) => $sp->user, $o->splits->toArray()) : []), ...($o?->paidBy ? [$o->paidBy] : [])] as $u) {
+            $out[(string) $u->id] = $u;
+        }
+
+        return array_values($out);
+    }
+
     /** Data the form template needs. */
-    public function context(Scope $s): array
+    public function context(Scope $s, ?Operation $o = null): array
     {
         $members = [];
-        foreach ($s->members() as $u) {
+        foreach (self::people($s, $o) as $u) {
             $members[(string) $u->id] = $u;
         }
 

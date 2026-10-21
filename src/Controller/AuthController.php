@@ -17,13 +17,13 @@ use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 final class AuthController extends BaseController
 {
     #[Route('/login', name: 'login')]
-    public function login(AuthenticationUtils $auth): Response
+    public function login(Request $r, AuthenticationUtils $auth): Response
     {
         if ($this->getUser()) {
             return $this->redirectToRoute('hub');
         }
 
-        return $this->render('auth/login.html.twig', ['error' => $auth->getLastAuthenticationError(), 'email' => $auth->getLastUsername()]);
+        return $this->render('auth/login.html.twig', ['error' => $auth->getLastAuthenticationError(), 'email' => $auth->getLastUsername(), 'invitedTo' => $this->invitedTo($r)]);
     }
 
     #[Route('/logout', name: 'logout')]
@@ -55,12 +55,14 @@ final class AuthController extends BaseController
                 $user->password = $hasher->hashPassword($user, $password);
                 $em->persist($user);
                 $em->flush();
+                // read the target before logging in: login() consumes it
+                $next = $this->afterLogin($r);
                 $security->login($user, 'form_login', 'main');
 
-                return $this->redirectToRoute('hub');
+                return $this->redirect($next);
             }
         }
 
-        return $this->render('auth/register.html.twig', ['error' => $error]);
+        return $this->render('auth/register.html.twig', ['error' => $error, 'invitedTo' => $this->invitedTo($r)]);
     }
 }

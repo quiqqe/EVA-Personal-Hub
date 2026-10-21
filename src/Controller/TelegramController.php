@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Entity\TelegramLogin;
 use App\Entity\User;
 use App\Repository\UserRepository;
+use App\Money\Money;
 use App\Telegram;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -24,6 +25,8 @@ use Symfony\Component\Security\Http\Authenticator\Passport\Badge\RememberMeBadge
 final class TelegramController extends BaseController
 {
     private const SESSION = 'telegram_login';
+    /** a confirmed Telegram waiting to become an account or to be attached at the next e-mail sign-in */
+    public const PENDING = 'telegram_pending';
 
     public function __construct(
         private readonly Telegram $telegram,
@@ -99,16 +102,44 @@ final class TelegramController extends BaseController
             return $this->json(['status' => 'ok', 'redirect' => $this->generateUrl('profile')]);
         }
 
-        if (!$owner) {
-            // first visit through Telegram is the sign-up
-            $owner = new User(null, $attempt->telegramName ?? 'Telegram');
-            $owner->telegramId = $attempt->telegramId;
-            $this->em->persist($owner);
-        }
         $this->em->flush();
+        if (!$owner) {
+            // no account with this Telegram: ask whether to create one or attach it to an existing e-mail account
+            $r->getSession()->set(self::PENDING, ['id' => $attempt->telegramId, 'name' => $attempt->telegramName ?? 'Telegram']);
+
+            return $this->json(['status' => 'ok', 'redirect' => $this->generateUrl('login_telegram_new')]);
+        }
+        $next = $this->afterLogin($r);
         $security->login($owner, 'form_login', 'main', [(new RememberMeBadge())->enable()]);
 
-        return $this->json(['status' => 'ok', 'redirect' => $this->generateUrl('hub')]);
+        return $this->json(['status' => 'ok', 'redirect' => $next]);
+    }
+
+    /** Telegram confirmed, but no account knows it yet: a new account, or sign in by e-mail and attach it. */
+    #[Route('/login/telegram/new', name: 'login_telegram_new', methods: ['GET', 'POST'])]
+    public function newAccount(Request $r, Security $security): Response
+    {
+        $pending = $r->getSession()->get(self::PENDING);
+        if (!\is_array($pending) || $this->users->findOneBy(['telegramId' => $pending['id']])) {
+            $r->getSession()->remove(self::PENDING);
+
+            return $this->redirectToRoute('login');
+        }
+        if ($r->isMethod('POST')) {
+            $this->checkCsrf($r);
+            $currency = (string) $r->request->get('currency');
+            $user = new User(null, $pending['name'], isset(Money::choices()[$currency]) ? $currency : 'RUB');
+            $user->telegramId = (int) $pending['id'];
+            $this->em->persist($user);
+            $this->em->flush();
+            $r->getSession()->remove(self::PENDING);
+            $next = $this->afterLogin($r);
+            $security->login($user, 'form_login', 'main', [(new RememberMeBadge())->enable()]);
+
+            return $this->redirect($next);
+        }
+
+        return $this->render('auth/telegram_new.html.twig', ['name' => $pending['name'], 'invitedTo' => $this->invitedTo($r)]);
     }
 
     /** Updates from Telegram. Always 200: Telegram retries anything else. */
@@ -141,7 +172,8 @@ final class TelegramController extends BaseController
 
             return;
         }
-        if ($attempt->expired() || $attempt->confirmedAt) {
+        // the code belongs to the Telegram account that pressed Start first; anyone else forwarding it gets nothing
+        if ($attempt->expired() || $attempt->confirmedAt || ($attempt->telegramId !== null && $attempt->telegramId !== $u['tgId'])) {
             $this->telegram->call('sendMessage', ['chat_id' => $u['chatId'], 'text' => "Ссылка для входа устарела. Нажмите «Войти через Telegram» на сайте ещё раз:\n$site"]);
 
             return;

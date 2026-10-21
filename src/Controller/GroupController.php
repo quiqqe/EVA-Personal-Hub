@@ -7,6 +7,8 @@ namespace App\Controller;
 use App\Entity\Group;
 use App\Entity\Membership;
 use App\Money\Ledger;
+use App\Money\Entity\Account;
+use App\Money\Entity\Recurring;
 use App\Money\Money;
 use App\Money\Scope;
 use Doctrine\ORM\EntityManagerInterface;
@@ -89,28 +91,80 @@ final class GroupController extends BaseController
         if (!$self) {
             $this->ownerOnly($mine);
         }
-        foreach ($g->memberships as $m) {
-            if ((string) $m->id === $member) {
-                if ($m->isOwner() && \count($g->memberships) > 1) {
-                    // pass ownership on so the group is never left without one
-                    foreach ($g->memberships as $other) {
-                        if ($other !== $m) {
-                            $other->role = 'owner';
-                            break;
-                        }
-                    }
-                }
-                $g->memberships->removeElement($m);
-                $this->em->remove($m);
-                // whoever leaves stops sharing their accounts with the group
-                foreach ($this->em->getRepository(\App\Money\Entity\Account::class)->findBy(['user' => $m->user]) as $a) {
-                    $a->sharedWith->removeElement($g);
+        $m = null;
+        foreach ($g->memberships as $x) {
+            if ((string) $x->id === $member) {
+                $m = $x;
+            }
+        }
+        if (!$m) {
+            throw $this->createNotFoundException();
+        }
+        $back = $this->redirectToRoute('group', ['id' => $id]);
+        if (\count($g->memberships) === 1) {
+            $this->addFlash('error', 'Вы последний участник. Удалите группу или сначала пригласите кого-нибудь — иначе она останется без хозяина.');
+
+            return $back;
+        }
+        // nobody walks away from an open debt: it could never be settled afterwards
+        $open = [];
+        foreach ($this->ledger->debts($g) as $cur => $d) {
+            $v = $d['net'][(string) $m->user->id] ?? 0;
+            if ($v !== 0) {
+                $open[] = ($v > 0 ? 'получит ' : 'отдаст ').Money::format(abs($v), $cur);
+            }
+        }
+        if ($open) {
+            $this->addFlash('error', ($self ? 'У вас' : 'У '.$m->user->name).' есть несведённые долги в группе: '.implode(', ', $open).'. Сначала рассчитайтесь в «Долгах».');
+
+            return $back;
+        }
+        if ($m->isOwner()) {
+            // pass ownership on so the group is never left without one
+            foreach ($g->memberships as $other) {
+                if ($other !== $m) {
+                    $other->role = 'owner';
+                    break;
                 }
             }
         }
+        $g->memberships->removeElement($m);
+        $this->em->remove($m);
+        // whoever leaves stops sharing their accounts with the group, and their money stops flowing in or out of it
+        $accounts = $this->em->getRepository(Account::class)->findBy(['user' => $m->user]);
+        foreach ($accounts as $a) {
+            $a->sharedWith->removeElement($g);
+        }
+        foreach ($this->em->createQuery('SELECT r FROM '.Recurring::class.' r LEFT JOIN r.account a LEFT JOIN r.toAccount ta
+            WHERE (r.group = :g AND a.user = :u) OR (r.user = :u AND ta.group = :g)')->setParameter('g', $g)->setParameter('u', $m->user)->getResult() as $rec) {
+            $rec->active = false;
+        }
+        // someone removed by the owner can't come back with the old link
+        if (!$self) {
+            $g->newInviteToken();
+        }
         $this->em->flush();
+        $this->addFlash('ok', $self ? 'Вы вышли из группы «'.$g->name.'»' : $m->user->name.' больше не в группе. Ссылка-приглашение обновлена.');
 
-        return $self ? $this->redirectToRoute('groups') : $this->redirectToRoute('group', ['id' => $id]);
+        return $self ? $this->redirectToRoute('groups') : $back;
+    }
+
+    #[Route('/groups/{id}/owner/{member}', name: 'group_owner', methods: ['POST'])]
+    public function makeOwner(Request $r, string $id, string $member): Response
+    {
+        $this->checkCsrf($r);
+        [$g, $mine] = $this->load($id);
+        $this->ownerOnly($mine);
+        foreach ($g->memberships as $x) {
+            if ((string) $x->id === $member && $x !== $mine) {
+                $x->role = 'owner';
+                $mine->role = 'member';
+                $this->em->flush();
+                $this->addFlash('ok', $x->user->name.' теперь владелец группы');
+            }
+        }
+
+        return $this->redirectToRoute('group', ['id' => $id]);
     }
 
     #[Route('/groups/{id}/delete', name: 'group_delete', methods: ['POST'])]

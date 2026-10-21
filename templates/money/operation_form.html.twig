@@ -48,7 +48,7 @@
         <div data-split-box class="split-box">
             <label>Кто платил
                 <select name="paid_by" data-payer data-me="{{ app.user.id }}">
-                    {% for id, u in members %}<option value="{{ id }}" {{ payer == id ? 'selected' }}>{{ u.name }}{{ u == app.user ? ' (я)' }}</option>{% endfor %}
+                    {% for id, u in members %}<option value="{{ id }}" {{ payer == id ? 'selected' }}>{{ u.name }}{{ u == app.user ? ' (я)' }}{{ u not in scope.members ? ' (вышел)' }}</option>{% endfor %}
                     <option value="many" {{ payer == 'many' ? 'selected' }}>Несколько человек…</option>
                 </select>
             </label>
@@ -63,7 +63,7 @@
                     {% set sp = byUser[id] ?? null %}
                     {% set partValue = post.part[id] ?? (sp and sp.amount > 0 ? (mode == 'amounts' ? (entered.owed[id] ?? 0)|money_input(entered.currency) : (sp.weight ?? '')) : '') %}
                     <div class="person">
-                        <label class="check"><input type="checkbox" name="participants[]" value="{{ id }}" data-equal-only {{ id in participants ? 'checked' }}><span>{{ u.name }}{{ u == app.user ? ' (я)' }}</span></label>
+                        <label class="check"><input type="checkbox" name="participants[]" value="{{ id }}" data-equal-only {{ id in participants ? 'checked' }}><span>{{ u.name }}{{ u == app.user ? ' (я)' }}{{ u not in scope.members ? ' (вышел)' }}</span></label>
                         <input name="part[{{ id }}]" value="{{ partValue }}" inputmode="decimal" data-part data-id="{{ id }}" aria-label="Доля: {{ u.name }}">
                         <input name="paid[{{ id }}]" value="{{ post.paid[id] ?? ((entered.paid[id] ?? 0) > 0 ? entered.paid[id]|money_input(entered.currency) : '') }}" inputmode="decimal" placeholder="0" data-paid data-id="{{ id }}" aria-label="Заплатил: {{ u.name }}">
                     </div>
@@ -78,8 +78,8 @@
     <label data-account>Счёт
         <select name="account" data-currency-source>
             {% set current = post.account ?? (o.account ? o.account.id.toRfc4122 : '') %}
-            {% if o.account and o.account not in sources %}<option value="{{ o.account.id }}" data-cur="{{ o.account.currency }}" selected>{{ o.account.label }}</option>{% endif %}
-            {% for a in sources %}<option value="{{ a.id }}" data-cur="{{ a.currency }}" data-name="{{ a.name }}" data-group="{{ a.group ? a.group.id }}" data-mine="{{ a.user == app.user ? 1 : '' }}" data-shared="{{ a.sharedWith|map(g => g.id.toRfc4122)|join(' ') }}" {{ current == a.id.toRfc4122 ? 'selected' }}>{{ a.icon }} {{ scope.group ? a.label : a.name }} · {{ a.currency }}</option>{% endfor %}
+            {% if o.account and o.account not in sources %}<option value="{{ o.account.id }}" data-cur="{{ o.account.currency }}" data-owner="{{ o.account.user ? o.account.user.id }}" data-name="{{ o.account.name }}" selected>{{ o.account.label }}</option>{% endif %}
+            {% for a in sources %}<option value="{{ a.id }}" data-cur="{{ a.currency }}" data-name="{{ a.name }}" data-group="{{ a.group ? a.group.id }}" data-mine="{{ a.user == app.user ? 1 : '' }}" data-owner="{{ a.user ? a.user.id }}" data-shared="{{ a.sharedWith|map(g => g.id.toRfc4122)|join(' ') }}" {{ current == a.id.toRfc4122 ? 'selected' }}>{{ a.icon }} {{ scope.group ? a.label : a.name }} · {{ a.currency }}</option>{% endfor %}
         </select>
         {% if not sources %}<a href="{{ path('money_account_new', {scope: scope.key}) }}">Сначала добавьте счёт</a>{% endif %}
     </label>
@@ -148,7 +148,16 @@
     <label>Повторять
         <select name="period">{% for k, v in periods %}<option value="{{ k }}" {{ (post.period ?? o.period) == k ? 'selected' }}>{{ v }}</option>{% endfor %}</select>
     </label>
-    <label>Первый платёж <input type="date" name="date" value="{{ post.date ?? o.startDate.format('Y-m-d') }}" required></label>
+    <label>Первый платёж <input type="date" name="date" value="{{ post.date ?? o.startDate.format('Y-m-d') }}" required data-recurring-start data-today="{{ 'now'|date('Y-m-d') }}"></label>
+    {% if isNew %}
+    <div class="hint" data-backfill hidden>
+        Дата в прошлом. Что сделать с уже прошедшими платежами?
+        <label class="check"><input type="radio" name="backfill" value="1" {{ (post.backfill ?? '1') == '1' ? 'checked' }}> Записать их задним числом (с этой даты по сегодня)</label>
+        <label class="check"><input type="radio" name="backfill" value="0" {{ (post.backfill ?? '1') == '0' ? 'checked' }}> Не записывать — начать со следующего платежа</label>
+    </div>
+    {% else %}
+    <small class="muted">При смене даты или периода уже созданные операции не повторяются — расписание продолжится со следующей даты.</small>
+    {% endif %}
     {% else %}
     <label>Дата
         <input type="date" name="date" value="{{ post.date ?? o.date.format('Y-m-d') }}" required>

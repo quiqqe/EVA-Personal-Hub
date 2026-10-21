@@ -1,0 +1,23 @@
+{% extends 'auth/_layout.html.twig' %}
+{% block title %}Telegram подтверждён — EVA{% endblock %}
+{% block form %}
+<div class="auth-form">
+    <h2>Telegram подтверждён ✅</h2>
+    <p class="muted">{{ name }}, к этому Telegram ещё не привязан ни один аккаунт.</p>
+    {% if invitedTo %}<div class="flash flash-ok">После входа вы вступите в группу «{{ invitedTo.name }}».</div>{% endif %}
+
+    <div class="choice">
+        <h3>У меня уже есть аккаунт по email</h3>
+        <p class="muted">Войдите паролем — Telegram привяжется к нему сам, данные будут на месте.</p>
+        <a class="btn wide" href="{{ path('login') }}">Войти по email</a>
+    </div>
+
+    <form method="post" class="choice">
+        <h3>Я здесь впервые</h3>
+        <label for="currency">Основная валюта <small class="muted">— в ней итоги, можно сменить</small></label>
+        {% include '_currency_select.html.twig' with {value: 'RUB', id: 'currency'} %}
+        <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
+        <button class="btn primary wide auth-submit" data-guess-currency>Создать аккаунт</button>
+    </form>
+</div>
+{% endblock %}

@@ -7,6 +7,7 @@ namespace App\Money\Controller;
 use App\Controller\BaseController;
 use App\Money\Entity\Budget;
 use App\Money\Entity\Goal;
+use App\Money\Dates;
 use App\Money\Ledger;
 use App\Money\Money;
 use App\Money\Rates;
@@ -30,7 +31,7 @@ final class DashboardController extends BaseController
     {
         $from = (string) $r->query->get('from');
         $to = (string) $r->query->get('to');
-        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $r->query->get('date')) ?: null;
+        $date = Dates::parse((string) $r->query->get('date'), '2000-01-01', 'today');
         $known = Money::choices();
 
         return $this->json(['rate' => isset($known[$from], $known[$to]) ? $rates->rate($from, $to, $date) : null]);

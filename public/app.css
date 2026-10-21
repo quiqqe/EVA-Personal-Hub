@@ -504,3 +504,10 @@ fieldset.share .check { margin: var(--s2) 0; }
 .chip { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 99px; padding: 7px 12px; font: 500 14px var(--font); cursor: pointer; }
 .chip.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .chip[hidden], .cat-chips[hidden] { display: none; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 6px var(--s4); margin: var(--s4) 0; font-size: 14px; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; }
+.member-row { flex-wrap: wrap; }
+
+.choice { margin-top: var(--s5); padding-top: var(--s5); border-top: 1px solid var(--line); }
+.choice h3 { margin-top: 0; }

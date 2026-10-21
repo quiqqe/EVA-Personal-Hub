@@ -46,7 +46,8 @@ final class Money
      */
     public static function parse(string $input, string $currency): ?int
     {
-        $s = preg_replace('/[\s\x{00A0}\x{202F}₽$€£¥]/u', '', $input) ?? '';
+        // spaces, currency signs, and the typographic minus banks like to use
+        $s = str_replace("\u{2212}", '-', preg_replace('/[\s\x{00A0}\x{202F}₽$€£¥֏]/u', '', $input) ?? '');
         if ($s === '') {
             return null;
         }
@@ -61,6 +62,12 @@ final class Money
         }
         preg_match_all('/([+-]?)(\d+)(?:\.(\d+))?/', $s, $m, PREG_SET_ORDER);
         $d = self::digits($currency);
+        // up to a trillion units of anything: far beyond real money, far below an int overflow
+        foreach ($m as $t) {
+            if (\strlen(ltrim($t[2], '0')) > 12) {
+                return null;
+            }
+        }
         $total = 0;
         foreach ($m as $t) {
             $frac = str_pad($t[3] ?? '', $d + 1, '0');

@@ -27,16 +27,15 @@ final class DebtController extends BaseController
     public function index(Request $r, Scope $scope, Ledger $ledger, EntityManagerInterface $em, Rates $rates): Response
     {
         \assert($scope->group !== null);
-        $members = [];
-        foreach ($scope->members() as $u) {
-            $members[(string) $u->id] = $u;
-        }
+        // current members and people who left with a history here: their debts can still be settled
+        $members = $ledger->participants($scope->group);
         if ($r->isMethod('POST')) {
             $this->checkCsrf($r);
             $p = $r->request;
             if (Uuid::isValid((string) $p->get('delete'))) {
                 $s = $em->find(Settlement::class, (string) $p->get('delete'));
-                if ($s?->group === $scope->group) {
+                // only the two people it's about can take it back
+                if ($s?->group === $scope->group && ($s->from === $scope->me || $s->to === $scope->me)) {
                     // the money movements recorded for it go too
                     foreach ($s->operations() as $o) {
                         $em->remove($o);
@@ -75,10 +74,21 @@ final class DebtController extends BaseController
                     $rates->convert($paid, $paidCur, $currency),
                 );
             }
-            if (!$from || !$to || $from === $to || $amount === null || $amount <= 0) {
-                $this->addFlash('error', 'Проверьте, кто кому и сколько');
+            $date = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $p->get('date'));
+            $error = match (true) {
+                !$from || !$to => 'Выберите, кто отдал и кому',
+                $from === $to => 'Отдавал и получал один и тот же человек — выберите разных',
+                $from !== $scope->me && $to !== $scope->me => 'Записать возврат может только тот, кто отдавал или получал деньги',
+                $paid === null || $paid <= 0 => 'Введите, сколько отдали',
+                $amount === null || $amount <= 0 => 'Нет курса для пересчёта — укажите курс или сколько долга закрыто',
+                !$date || \DateTimeImmutable::getLastErrors() !== false || $date > new \DateTimeImmutable('today') => 'Укажите дату возврата (не в будущем)',
+                default => null,
+            };
+            if ($error) {
+                $this->addFlash('error', $error);
             } else {
                 $st = new Settlement($scope->group, $from, $to, $amount, $currency);
+                $st->date = $date;
                 if ($paidCur !== $currency) {
                     $st->origAmount = $paid;
                     $st->origCurrency = $paidCur;
@@ -98,6 +108,7 @@ final class DebtController extends BaseController
         return $this->render('money/debts.html.twig', [
             'scope' => $scope,
             'members' => $members,
+            'current' => array_map(fn ($u) => (string) $u->id, $scope->members()),
             'myAccounts' => array_values(array_filter($ledger->sourceAccounts($scope), fn (Account $a) => $a->user === $scope->me)),
             'debts' => $ledger->debts($scope->group),
             'settlements' => $em->getRepository(Settlement::class)->findBy(['group' => $scope->group], ['date' => 'DESC', 'id' => 'DESC'], 50),

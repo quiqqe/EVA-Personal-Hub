@@ -139,7 +139,7 @@ final class AccountController extends BaseController
     /** Only paths on this site: never redirect elsewhere. */
     public static function localPath(string $path): ?string
     {
-        return preg_match('#^/(?![/\\\\])#', $path) ? $path : null;
+        return preg_match('#^/(?![/\\\\])[^\s\\\\\x00-\x1f\x7f]*$#', $path) ? $path : null;
     }
 
     private function find(Scope $scope, string $id): Account

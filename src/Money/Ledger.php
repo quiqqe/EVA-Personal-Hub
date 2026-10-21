@@ -200,6 +200,22 @@ final class Ledger
             : $qb->where('a.user = :me OR ta.user = :me')->setParameter('me', $s->me);
     }
 
+    /**
+     * Seeing is not changing: an operation on someone else's personal account (visible because they share it,
+     * or because they transferred into a common account) is theirs to edit. Split bills of the group are shared
+     * records any member may correct; the payer's card stays the payer's.
+     */
+    public function canEdit(Scope $s, Operation $o): bool
+    {
+        foreach ([$o->account, $o->toAccount] as $a) {
+            if ($a?->user !== null && $a->user !== $s->me) {
+                return $o->createdBy === $s->me || ($s->group && $o->group === $s->group && \count($o->splits) > 0);
+            }
+        }
+
+        return true;
+    }
+
     public function visible(Scope $s, Operation $o): bool
     {
         return (bool) $this->operations($s)->select('COUNT(o.id)')->andWhere('o.id = :id')->setParameter('id', $o->id)
@@ -243,7 +259,8 @@ final class Ledger
             $out[$from->modify("+$i months")->format('Y-m')] = ['income' => 0, 'expense' => 0];
         }
         $rows = $this->operations($s)->select('o.date d, o.type t, o.currency cur, SUM('.$this->amountField($s).') s')
-            ->andWhere("o.type IN ('income', 'expense') AND o.date >= :from")->setParameter('from', $from, 'date_immutable')
+            ->andWhere("o.type IN ('income', 'expense') AND o.date >= :from AND o.date < :to")->setParameter('from', $from, 'date_immutable')
+            ->setParameter('to', new \DateTimeImmutable('first day of next month midnight'), 'date_immutable')
             ->groupBy('o.date, o.type, o.currency')->getQuery()->getArrayResult();
         $this->prefetchRates($rows, $in);
         foreach ($rows as $r) {
@@ -306,11 +323,35 @@ final class Ledger
         $this->runRecurring($s);
     }
 
+    /**
+     * Everyone who ever took part in the group's money (current members first): people who left keep their debts.
+     *
+     * @return array<string, User> id => user
+     */
+    public function participants(Group $g): array
+    {
+        $out = [];
+        foreach ($g->members() as $u) {
+            $out[(string) $u->id] = $u;
+        }
+        $ids = array_merge(
+            array_column($this->em->createQuery('SELECT IDENTITY(sp.user) u FROM '.Split::class.' sp JOIN sp.operation o WHERE o.group = :g')->setParameter('g', $g)->getArrayResult(), 'u'),
+            array_column($this->em->createQuery('SELECT IDENTITY(st.from) u FROM '.Settlement::class.' st WHERE st.group = :g')->setParameter('g', $g)->getArrayResult(), 'u'),
+            array_column($this->em->createQuery('SELECT IDENTITY(st.to) u FROM '.Settlement::class.' st WHERE st.group = :g')->setParameter('g', $g)->getArrayResult(), 'u'),
+        );
+        foreach (array_unique($ids) as $id) {
+            $out[$id] ??= $this->em->find(User::class, $id);
+        }
+
+        return array_filter($out);
+    }
+
     /** Creates operations for every due date of the space's recurring templates, up to today. */
     public function runRecurring(Scope $s): void
     {
-        $qb = $this->em->createQueryBuilder()->select('r')->from(Recurring::class, 'r')
-            ->where('r.active = true AND r.nextDate <= :today')->setParameter('today', new \DateTimeImmutable('today'), 'date_immutable');
+        $qb = $this->em->createQueryBuilder()->select('r')->from(Recurring::class, 'r')->join('r.account', 'ra')
+            // an archived account gets no new money: its templates wait until it's restored
+            ->where('r.active = true AND r.nextDate <= :today AND ra.archived = false')->setParameter('today', new \DateTimeImmutable('today'), 'date_immutable');
         $s->group ? $qb->andWhere('r.group = :o')->setParameter('o', $s->group) : $qb->andWhere('r.user = :o')->setParameter('o', $s->me);
         foreach ($qb->getQuery()->getResult() as $r) {
             $this->em->wrapInTransaction(function () use ($r): void {
@@ -324,9 +365,14 @@ final class Ledger
                     $o->amount = $r->amount;
                     $o->currency = $r->account->currency;
                     if ($r->origCurrency !== null) {
+                        $converted = $this->rates->convert((int) $r->origAmount, $r->origCurrency, $o->currency, $r->nextDate);
+                        if (!$converted) {
+                            // no rate for that day yet: try again on the next visit rather than book 0
+                            break;
+                        }
                         $o->origAmount = $r->origAmount;
                         $o->origCurrency = $r->origCurrency;
-                        $o->amount = $this->rates->convert((int) $r->origAmount, $r->origCurrency, $o->currency, $r->nextDate) ?? $r->amount;
+                        $o->amount = $converted;
                     }
                     $o->toAccount = $r->toAccount;
                     $o->toAmount = $r->toAmount;

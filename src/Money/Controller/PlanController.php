@@ -8,6 +8,7 @@ use App\Controller\BaseController;
 use App\Money\Entity\Budget;
 use App\Money\Entity\Goal;
 use App\Money\Entity\Recurring;
+use App\Money\Dates;
 use App\Money\Ledger;
 use App\Money\Money;
 use App\Money\OperationForm;
@@ -104,14 +105,23 @@ final class PlanController extends BaseController
         if ($r->isMethod('POST')) {
             $this->checkCsrf($r);
             $oldPeriod = $t->period;
+            $oldStart = $t->startDate;
             $errors = $form->apply($r, $scope, $t);
-            $start = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $r->request->get('date'));
-            $start ?: $errors[] = 'Укажите дату первого платежа';
+            $start = Dates::parse((string) $r->request->get('date'), '-2 years', '+2 years');
+            $start ?: $errors[] = 'Укажите дату первого платежа (не раньше чем 2 года назад)';
             if (!$errors) {
-                // a new start date or period restarts the schedule from that date
-                if (!$id || $start != $t->startDate || $t->period !== $oldPeriod) {
-                    $t->startDate = $t->nextDate = $start;
-                    $t->count = 0;
+                if (!$id || $start != $oldStart || $t->period !== $oldPeriod) {
+                    $today = new \DateTimeImmutable('today');
+                    if ($id) {
+                        // an edited schedule only goes forward: what was already created is never created again
+                        $from = max($start, $t->count > 0 ? $today->modify('+1 day') : $today);
+                    } else {
+                        // a new one starting in the past back-fills only when asked to
+                        $from = $start < $today && !$r->request->getBoolean('backfill') ? $today : $start;
+                    }
+                    $t->startDate = $start;
+                    $t->count = Schedule::firstOnOrAfter($start, $t->period, $from);
+                    $t->nextDate = Schedule::occurrence($start, $t->period, $t->count);
                 }
                 $t->createdBy ??= $this->me();
                 $this->em->persist($t);

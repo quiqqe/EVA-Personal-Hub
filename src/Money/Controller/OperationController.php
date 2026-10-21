@@ -84,9 +84,16 @@ final class OperationController extends BaseController
     public function form(Request $r, Scope $scope, ?string $id = null): Response
     {
         $o = $id ? $this->find($scope, $id) : new Operation();
-        // a group's split expense is edited inside the group, where its splits make sense
-        if ($o->group && !$scope->group) {
+        // a group's operation is edited inside the group (if I'm still in it), where its splits make sense
+        if ($o->group && !$scope->group && $o->group->membershipOf($this->me())) {
             return $this->redirectToRoute('money_operation_edit', ['scope' => $o->group->id, 'id' => $id]);
+        }
+        if ($id && !$this->ledger->canEdit($scope, $o)) {
+            if ($r->isMethod('POST')) {
+                throw $this->createAccessDeniedException();
+            }
+
+            return $this->render('money/operation_view.html.twig', ['scope' => $scope, 'o' => $o]);
         }
         if (!$id) {
             $o->type = \array_key_exists((string) $r->query->get('type'), Operation::TYPES) ? (string) $r->query->get('type') : 'expense';
@@ -102,7 +109,7 @@ final class OperationController extends BaseController
         $errors = [];
         if ($r->isMethod('POST')) {
             $this->checkCsrf($r);
-            $errors = $this->form->apply($r, $scope, $o);
+            $errors = $this->form->apply($r, $scope, $o, isNew: !$id);
             if (!$errors) {
                 $o->createdBy ??= $this->me();
                 $this->em->persist($o);
@@ -115,7 +122,7 @@ final class OperationController extends BaseController
             }
         }
 
-        return $this->render('money/operation_form.html.twig', $this->form->context($scope) + [
+        return $this->render('money/operation_form.html.twig', $this->form->context($scope, $o) + [
             'scope' => $scope,
             'o' => $o,
             'isNew' => !$id,
@@ -129,6 +136,9 @@ final class OperationController extends BaseController
     {
         $this->checkCsrf($r);
         $o = $this->find($scope, $id);
+        if (!$this->ledger->canEdit($scope, $o)) {
+            throw $this->createAccessDeniedException();
+        }
         $this->em->remove($o);
         $this->em->flush();
         $this->addFlash('ok', 'Операция удалена');
@@ -140,16 +150,18 @@ final class OperationController extends BaseController
     public function export(Scope $scope): StreamedResponse
     {
         $ops = $this->ledger->operations($scope)->orderBy('o.date')->getQuery()->toIterable();
-        $response = new StreamedResponse(function () use ($ops): void {
+        $response = new StreamedResponse(function () use ($ops, $scope): void {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
             fputcsv($out, ['Дата', 'Тип', 'Счёт', 'Сумма', 'Валюта', 'Исходная сумма', 'Исходная валюта', 'Счёт зачисления', 'Сумма зачисления', 'Категория', 'Комментарий', 'Кто платил'], ';', '"', '');
             foreach ($ops as $o) {
-                fputcsv($out, [
+                // what hit the account in my space (my part of a shared bill), the whole bill in a group
+                $sum = $scope->group ? $o->amount : ($o->accountAmount ?? $o->amount);
+                fputcsv($out, array_map(self::safeCell(...), [
                     $o->date->format('d.m.Y'),
                     Operation::TYPES[$o->type],
                     $o->account?->name,
-                    str_replace('.', ',', Money::toInput($o->type === 'income' ? $o->amount : -$o->amount, $o->currency)),
+                    str_replace('.', ',', Money::toInput($o->type === 'income' ? $sum : -$sum, $o->currency)),
                     $o->currency,
                     $o->origCurrency ? str_replace('.', ',', Money::toInput($o->type === 'income' ? $o->origAmount : -$o->origAmount, $o->origCurrency)) : '',
                     $o->origCurrency,
@@ -158,7 +170,7 @@ final class OperationController extends BaseController
                     $o->category?->name,
                     $o->note,
                     $o->paidBy?->name,
-                ], ';', '"', '');
+                ]), ';', '"', '');
                 $this->em->detach($o);
             }
             fclose($out);
@@ -167,6 +179,14 @@ final class OperationController extends BaseController
         $response->headers->set('Content-Disposition', 'attachment; filename="operations-'.date('Y-m-d').'.csv"');
 
         return $response;
+    }
+
+    /** A cell starting with = + - @ is a formula to Excel: names and notes become plain text, numbers stay numbers. */
+    private static function safeCell(mixed $v): string
+    {
+        $v = (string) $v;
+
+        return preg_match('/^[=+\-@\t\r]/', $v) && !preg_match('/^-?[\d\s]+(,\d+)?$/', $v) ? "'".$v : $v;
     }
 
     private function find(Scope $scope, string $id): Operation

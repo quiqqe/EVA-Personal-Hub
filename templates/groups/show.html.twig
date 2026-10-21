@@ -8,31 +8,38 @@
     <h2>Участники</h2>
     <div class="list">
     {% for m in group.memberships %}
-        <div class="row">
+        <div class="row member-row">
             <span>{{ m.user.name }} {% if m.isOwner %}<span class="badge">владелец</span>{% endif %}{% if m.user == app.user %} <span class="muted">(вы)</span>{% endif %}</span>
             {% if mine.isOwner and m != mine %}
-                <form method="post" action="{{ path('group_remove', {id: group.id, member: m.id}) }}" data-confirm="Удалить {{ m.user.name }} из группы?">
-                    <input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn small danger">Удалить</button>
-                </form>
+                <span class="mini-actions">
+                    <form method="post" action="{{ path('group_owner', {id: group.id, member: m.id}) }}" data-confirm="Сделать {{ m.user.name }} владельцем? Вы станете обычным участником.">
+                        <input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn small">Сделать владельцем</button>
+                    </form>
+                    <form method="post" action="{{ path('group_remove', {id: group.id, member: m.id}) }}" data-confirm="Исключить {{ m.user.name }}? Счета этого участника перестанут быть видны группе, регулярные платежи с них — на паузу. Ссылка-приглашение сменится. Если есть несведённые долги — сначала рассчитайтесь.">
+                        <input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn small danger">Исключить</button>
+                    </form>
+                </span>
             {% endif %}
         </div>
     {% endfor %}
     </div>
 </section>
 
-{% if mine.isOwner %}
 <section class="card">
     <h2>Пригласить</h2>
-    <p class="muted">Отправьте ссылку — по ней можно вступить в группу.</p>
+    <p class="muted">Отправьте ссылку — по ней можно вступить в группу (если нет аккаунта — после регистрации человек попадёт сразу сюда).</p>
     <div class="copy">
-        <input readonly value="{{ url('join', {token: group.inviteToken}) }}" id="invite">
+        <input readonly value="{{ url('join', {token: group.inviteToken}) }}" id="invite" aria-label="Ссылка-приглашение">
         <button type="button" class="btn" data-copy="#invite">Копировать</button>
     </div>
+    {% if mine.isOwner %}
     <form method="post" action="{{ path('group_invite', {id: group.id}) }}" data-confirm="Старая ссылка перестанет работать. Продолжить?">
         <input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn small">Новая ссылка</button>
     </form>
+    {% endif %}
 </section>
 
+{% if mine.isOwner %}
 <form method="post" class="card">
     <h2>Настройки</h2>
     <label>Название <input name="name" value="{{ group.name }}" required maxlength="100"></label>
@@ -43,11 +50,11 @@
 {% endif %}
 
 <div class="actions">
-    <form method="post" action="{{ path('group_remove', {id: group.id, member: mine.id}) }}" data-confirm="Выйти из группы «{{ group.name }}»?">
+    <form method="post" action="{{ path('group_remove', {id: group.id, member: mine.id}) }}" data-confirm="Выйти из группы «{{ group.name }}»? Ваши счета перестанут быть ей видны, регулярные платежи группы с ваших счетов встанут на паузу. Если есть несведённые долги — сначала рассчитайтесь.">
         <input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn danger">Выйти из группы</button>
     </form>
     {% if mine.isOwner %}
-    <form method="post" action="{{ path('group_delete', {id: group.id}) }}" data-confirm="Удалить группу насовсем?">
+    <form method="post" action="{{ path('group_delete', {id: group.id}) }}" data-confirm="Удалить группу насовсем? Это возможно только пока в ней нет операций.">
         <input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn danger">Удалить группу</button>
     </form>
     {% endif %}

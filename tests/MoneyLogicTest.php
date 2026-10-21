@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests;
 
 use App\Money\Csv;
+use App\Money\Dates;
 use App\Telegram;
 use App\Money\Debts;
 use App\Money\Fx;
@@ -144,6 +145,23 @@ final class MoneyLogicTest extends TestCase
         self::assertSame('2027-01-31', Schedule::occurrence($start, 'month', 12)->format('Y-m-d'));
         self::assertSame('2025-02-28', Schedule::occurrence(new \DateTimeImmutable('2024-02-29'), 'year', 1)->format('Y-m-d'));
         self::assertSame('2026-02-14', Schedule::occurrence($start, 'week', 2)->format('Y-m-d'));
+    }
+
+    public function testScheduleResumesWithoutRepeating(): void
+    {
+        $start = new \DateTimeImmutable('2026-01-31');
+        // monthly from 31 Jan; the first payment on or after 1 Oct is the 31st of October (index 9)
+        self::assertSame(9, Schedule::firstOnOrAfter($start, 'month', new \DateTimeImmutable('2026-10-01')));
+        self::assertSame(0, Schedule::firstOnOrAfter($start, 'month', $start));
+        self::assertSame(1, Schedule::firstOnOrAfter($start, 'week', new \DateTimeImmutable('2026-02-01')));
+    }
+
+    public function testDatesAreRealDays(): void
+    {
+        self::assertSame('2026-03-31', Dates::parse('2026-03-31')?->format('Y-m-d'));
+        self::assertNull(Dates::parse('2026-02-31'), 'overflow is not a date');
+        self::assertNull(Dates::parse('0001-01-01'), 'out of range');
+        self::assertNull(Dates::parse('21.10.2026'));
     }
 
     public function testCsvBankStatement(): void

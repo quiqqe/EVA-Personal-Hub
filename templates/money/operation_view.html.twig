@@ -1,0 +1,18 @@
+{% extends 'money/layout.html.twig' %}
+{# someone else's operation: shown, not editable #}
+{% set owner = (o.account and o.account.user and o.account.user != app.user) ? o.account.user : (o.toAccount and o.toAccount.user ? o.toAccount.user : null) %}
+{% block body %}
+<h1>Операция</h1>
+<section class="card">
+    {% include 'money/_op.html.twig' %}
+    <dl class="facts">
+        <dt>Дата</dt><dd>{{ o.date|date('d.m.Y') }}</dd>
+        {% if o.account %}<dt>Счёт</dt><dd>{{ o.account.label }}</dd>{% endif %}
+        {% if o.toAccount %}<dt>Куда</dt><dd>{{ o.toAccount.label }}</dd>{% endif %}
+        {% if o.note %}<dt>Комментарий</dt><dd>{{ o.note }}</dd>{% endif %}
+        {% if o.createdBy %}<dt>Внёс(ла)</dt><dd>{{ o.createdBy.name }}</dd>{% endif %}
+    </dl>
+    <p class="hint">🔒 Операция по личному счёту, владелец — {{ owner ? owner.name : 'другой участник' }}. Изменить или удалить её может только владелец счёта.</p>
+</section>
+<a class="btn" href="{{ path('money_operations', {scope: scope.key, m: o.date|date('Y-m')}) }}">← К операциям</a>
+{% endblock %}
