@@ -9,6 +9,7 @@ use App\Money\Ledger;
 use App\Money\Debts;
 use App\Money\Entity\Operation;
 use App\Money\Money;
+use App\Money\Rates;
 use App\Telegram;
 use Symfony\Bundle\SecurityBundle\Security;
 use Twig\Attribute\AsTwigFilter;
@@ -16,7 +17,7 @@ use Twig\Attribute\AsTwigFunction;
 
 final class AppExtension
 {
-    public function __construct(private readonly Security $security, private readonly Ledger $ledger, private readonly Telegram $telegram)
+    public function __construct(private readonly Security $security, private readonly Ledger $ledger, private readonly Telegram $telegram, private readonly Rates $rates)
     {
     }
 
@@ -69,6 +70,13 @@ final class AppExtension
         }
 
         return ['owed' => $owed, 'paid' => $paid, 'currency' => $o->origCurrency ?? $o->currency];
+    }
+
+    /** Today's conversion for display (null when there is no rate) */
+    #[AsTwigFunction('convert')]
+    public function convert(int $minor, string $from, string $to): ?int
+    {
+        return $this->rates->convert($minor, $from, $to);
     }
 
     #[AsTwigFilter('money_input')]

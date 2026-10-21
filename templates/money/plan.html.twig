@@ -37,7 +37,9 @@
                 <small class="muted">
                     {% if g.saved >= g.goal.target %}🎉 Цель достигнута!
                     {% else %}Осталось {{ (g.goal.target - g.saved)|money(c) }}
-                        {% if g.goal.deadline %}
+                        {% if g.goal.deadline and g.goal.deadline|date('Y-m-d') < 'now'|date('Y-m-d') %}
+                            · срок {{ g.goal.deadline|date('d.m.Y') }} прошёл
+                        {% elseif g.goal.deadline %}
                             {% set months = max(1, ((g.goal.deadline.timestamp - 'now'|date('U')) / 2629800)|round(0, 'ceil')) %}
                             до {{ g.goal.deadline|date('d.m.Y') }} · ≈{{ ((g.goal.target - g.saved) / months)|round|money(c) }} в месяц
                         {% endif %}
@@ -72,7 +74,7 @@
                 <b>{{ t.category ? t.category.label : (t.type == 'transfer' ? '🔁 Перевод' : t.note ?: 'Без категории') }}</b>
                 <small class="muted"><br>{{ periods[t.period] }} · {{ t.active ? 'следующая ' ~ t.nextDate|date('d.m.Y') : 'на паузе' }} · {{ t.account.name }}{{ t.toAccount ? ' → ' ~ t.toAccount.name }}</small>
             </a>
-            <span class="{{ t.type }}">{{ t.type == 'income' ? '+' : (t.type == 'expense' ? '−') }}{{ t.origCurrency ? t.origAmount|money(t.origCurrency) : t.amount|money(t.account.currency) }}{% if t.origCurrency %}<br><small class="muted">≈ {{ t.amount|money(t.account.currency, true) }} по курсу дня</small>{% endif %}</span>
+            <span class="{{ t.type }}">{{ t.type == 'income' ? '+' : (t.type == 'expense' ? '−') }}{{ t.origCurrency ? t.origAmount|money(t.origCurrency) : t.amount|money(t.account.currency) }}{% if t.origCurrency %}{% set est = convert(t.origAmount, t.origCurrency, t.account.currency) %}<br><small class="muted">{{ est is not null ? '≈ ' ~ est|money(t.account.currency, true) ~ ' по сегодняшнему курсу' : 'пересчитается по курсу дня платежа' }}</small>{% endif %}</span>
             <form method="post" action="{{ path('money_recurring_toggle', {scope: scope.key, id: t.id}) }}" class="mini-actions">
                 <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
                 <button class="btn small" title="{{ t.active ? 'Пауза' : 'Продолжить' }}">{{ t.active ? '⏸' : '▶️' }}</button>

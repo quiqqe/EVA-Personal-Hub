@@ -145,6 +145,9 @@ final class ImportController extends BaseController
             $o->note = mb_substr($cols['note'] !== null ? ($row[$cols['note']] ?? '') : '', 0, 255);
             $o->group = $scope->group;
             $this->foreign($o, $row, $cols, $invert);
+            if ($o->amount <= 0) {
+                continue;
+            }
             $bankCategory = $cols['category'] !== null ? mb_strtolower($row[$cols['category']] ?? '') : '';
             $o->category = $byNote[$o->type][mb_strtolower($o->note)]
                 ?? $byName[$o->type][$bankCategory]
@@ -180,7 +183,10 @@ final class ImportController extends BaseController
             // the only sum column is in the purchase's currency
             $orig = Money::parse($row[$cols['amount']] ?? '', $cur);
             $converted = $orig !== null ? $this->rates->convert(abs($orig), $cur, $o->currency, $o->date) : null;
-            if ($converted === null) {
+            if (!$converted) {
+                // no rate for that day: better skip the row (it's counted as skipped) than book USD as AMD
+                $o->amount = 0;
+
                 return;
             }
             $o->amount = $converted;

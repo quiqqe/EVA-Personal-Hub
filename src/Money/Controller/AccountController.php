@@ -57,17 +57,28 @@ final class AccountController extends BaseController
             $p = $r->request;
             $a->name = mb_substr(trim((string) $p->get('name')), 0, 100);
             $a->type = \array_key_exists((string) $p->get('type'), Account::TYPES) ? (string) $p->get('type') : 'other';
-            // currency is fixed once there are operations: their amounts are in it
-            if (!$id || !$this->hasOperations($a)) {
-                $a->currency = isset(Money::choices()[(string) $p->get('currency')]) ? (string) $p->get('currency') : $a->currency;
+            // once there are operations their amounts are in this currency; changing it means "I picked the wrong one"
+            $newCurrency = isset(Money::choices()[(string) $p->get('currency')]) ? (string) $p->get('currency') : $a->currency;
+            $relabel = null;
+            if ($newCurrency !== $a->currency) {
+                if (!$id || !$this->hasOperations($a)) {
+                    $a->currency = $newCurrency;
+                } elseif ($p->getBoolean('relabel')) {
+                    $relabel = $newCurrency;
+                } else {
+                    $error = 'Чтобы сменить валюту счёта с операциями, отметьте «я ошибся валютой»';
+                }
             }
-            $initial = Money::parse((string) $p->get('initial') ?: '0', $a->currency);
-            $error = match (true) {
+            $initial = Money::parse((string) $p->get('initial') ?: '0', $relabel ?? $a->currency);
+            $error ??= match (true) {
                 $a->name === '' => 'Введите название',
                 $initial === null => 'Начальный остаток — число',
                 default => null,
             };
             if (!$error) {
+                if ($relabel) {
+                    $this->relabel($a, $relabel);
+                }
                 $a->initialBalance = (int) $initial;
                 // a personal account can be shown to any of my groups (its balance and operations join their common money)
                 if (!$scope->group) {
@@ -90,6 +101,7 @@ final class AccountController extends BaseController
             'account' => $a,
             'isNew' => !$id,
             'locked' => $id && $this->hasOperations($a),
+            'balance' => $id ? $this->ledger->balances([$a])[(string) $a->id] : 0,
             'error' => $error,
         ]);
     }
@@ -118,6 +130,30 @@ final class AccountController extends BaseController
         }
 
         return $this->redirectToRoute('money_accounts', ['scope' => $scope->key()]);
+    }
+
+    /**
+     * The account was opened in the wrong currency: every number stays the same, only its currency changes.
+     * Stored minor units are rescaled where the digits differ (RUB 2 → JPY 0 → BTC 8).
+     */
+    private function relabel(Account $a, string $currency): void
+    {
+        $shift = Money::digits($currency) - Money::digits($a->currency);
+        $scale = fn (string $col) => $shift >= 0 ? "$col * ".(10 ** $shift) : "ROUND($col::numeric / ".(10 ** -$shift).')';
+        $db = $this->em->getConnection();
+        $db->transactional(function () use ($db, $a, $currency, $scale): void {
+            $id = (string) $a->id;
+            $db->executeStatement('UPDATE money_split SET amount = '.$scale('amount').', paid = '.$scale('paid').' WHERE operation_id IN (SELECT id FROM money_operation WHERE account_id = ?)', [$id]);
+            $db->executeStatement('UPDATE money_operation SET currency = ?, amount = '.$scale('amount').', account_amount = '.$scale('account_amount').' WHERE account_id = ?', [$currency, $id]);
+            // a sum originally in the new currency is now simply the account's own sum
+            $db->executeStatement('UPDATE money_operation SET amount = orig_amount, orig_amount = NULL, orig_currency = NULL WHERE account_id = ? AND orig_currency = ?', [$id, $currency]);
+            $db->executeStatement('UPDATE money_operation SET to_amount = '.$scale('to_amount').' WHERE to_account_id = ?', [$id]);
+            $db->executeStatement('UPDATE money_recurring SET amount = '.$scale('amount').' WHERE account_id = ? AND orig_currency IS NULL', [$id]);
+            $db->executeStatement('UPDATE money_recurring SET to_amount = '.$scale('to_amount').' WHERE to_account_id = ?', [$id]);
+            $db->executeStatement('UPDATE money_goal SET target = '.$scale('target').' WHERE account_id = ?', [$id]);
+        });
+        $a->currency = $currency;
+        $this->addFlash('ok', 'Валюта счёта изменена на '.$currency.' — суммы операций остались теми же числами');
     }
 
     /** Show a personal account to a group in one tap (from a hint in the operation form). */

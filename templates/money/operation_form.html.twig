@@ -105,6 +105,7 @@
         </label>
         <label><span data-fx-credited-label>На счёт</span> <small class="muted" data-fx-acc-cur></small>
             <input name="account_amount" inputmode="decimal" autocomplete="off" data-fx-credited value="{{ post.account_amount ?? (o.origAmount is not null ? o.amount|money_input(o.currency) : '') }}">
+            <input type="hidden" name="account_amount_for" data-fx-credited-for value="{{ post.account_amount_for ?? (o.account ? o.account.id) }}">
         </label>
         <small class="muted fx-hint">Подставлен рыночный курс на дату операции. Обменник или банк дали другой — впишите его курс или сумму, которая реально пришла на счёт.</small>
     </div>

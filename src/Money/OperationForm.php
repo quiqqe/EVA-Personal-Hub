@@ -38,7 +38,7 @@ final class OperationForm
         // the card is debited for its owner (me when it's mine; the payer's own card when someone corrects their bill)
         $owner = $account?->user ?? $s->me;
         $ownerPays = !$split || ($account !== null && ($manyPayers
-            ? (Money::parse((string) ($p->all('paid')[(string) $owner->id] ?? ''), 'RUB') ?? 0) > 0
+            ? (Money::parse((string) ($p->all('paid')[(string) $owner->id] ?? ''), (string) $p->get('amount_currency') ?: $account->currency) ?? 0) > 0
             : $payer === $owner));
 
         // only others paid from cards we can't see: no account, just the currency
@@ -85,7 +85,8 @@ final class OperationForm
             $on = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $p->get('date')) ?: new \DateTimeImmutable('today');
             $credited = Fx::amount(
                 $amount, $entered, $currency,
-                Money::parse((string) $p->get('account_amount'), $currency),
+                // a credited sum only counts for the account it was typed for (the form clears it when the account changes)
+                (string) $p->get('account_amount_for') === (string) $t->account?->id ? Money::parse((string) $p->get('account_amount'), $currency) : null,
                 Fx::parseRate((string) $p->get('fx_rate')),
                 $this->rates->convert($amount, $entered, $currency, $on),
             );

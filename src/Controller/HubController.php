@@ -22,6 +22,8 @@ final class HubController extends BaseController
     {
         // a glance at each tool; the money widget shows the personal total
         $me = $this->me();
+        // the hub's total must already include today's salary or rent
+        $ledger->open(new Scope($me));
         $accounts = $ledger->accounts(new Scope($me));
         $balances = $ledger->balances($accounts);
         $byCurrency = [];

@@ -104,7 +104,8 @@ final class OperationController extends BaseController
                     $o->account = $a;
                 }
             }
-            $o->account ??= $this->lastAccount($scope);
+            // the form shows its account and the sum's currency follows it: never leave it to the browser's first option
+            $o->account ??= $this->lastAccount($scope) ?? ($this->ledger->sourceAccounts($scope)[0] ?? null);
         }
         $errors = [];
         if ($r->isMethod('POST')) {

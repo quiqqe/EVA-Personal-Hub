@@ -378,7 +378,7 @@ final class Ledger
         return $out;
     }
 
-    /** Called whenever a space is opened: default categories on first visit, then due recurring operations. */
+    /** Called whenever a space is opened: default categories on first visit, then due recurring operations in all my spaces. */
     public function open(Scope $s): void
     {
         if (!$this->categories($s, archived: true)) {
@@ -387,7 +387,11 @@ final class Ledger
             }
             $this->em->flush();
         }
-        $this->runRecurring($s);
+        // due payments everywhere I take part: a personal salary shows up in the group's common money too
+        $this->runRecurring(new Scope($s->me));
+        foreach ($this->groupsOf($s->me) as $g) {
+            $this->runRecurring(new Scope($s->me, $g));
+        }
     }
 
     /**

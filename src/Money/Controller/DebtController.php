@@ -51,9 +51,9 @@ final class DebtController extends BaseController
                 $s = $em->find(Settlement::class, (string) $p->get('attach'));
                 $account = $this->myAccount($ledger, $scope, (string) $p->get('account'));
                 if ($s?->group === $scope->group && $account) {
-                    $this->attach($s, $account, $rates, $scope, $em);
+                    $o = $this->attach($s, $account, $rates, $scope, $em);
                     $em->flush();
-                    $this->addFlash('ok', 'Записано на «'.$account->name.'»');
+                    $o ? $this->addFlash('ok', 'Записано на «'.$account->name.'»') : $this->addFlash('error', 'Не получилось: уже записано или нет курса для пересчёта');
                 }
 
                 return $this->redirectToRoute('money_debts', ['scope' => $scope->key()]);
@@ -97,6 +97,9 @@ final class DebtController extends BaseController
                 $account = $this->myAccount($ledger, $scope, (string) $p->get('account'));
                 $o = $account ? $this->attach($st, $account, $rates, $scope, $em) : null;
                 $em->flush();
+                if ($account && !$o) {
+                    $this->addFlash('error', 'Возврат записан, но на счёт «'.$account->name.'» — нет: нет курса для пересчёта. Попробуйте позже в «Истории возвратов».');
+                }
                 $this->addFlash('ok', $from->name.' → '.$to->name.': '.Money::format($amount, $currency)
                     .($st->origCurrency ? ' ('.Money::format($paid, $paidCur).')' : '')
                     .($o ? ' · '.($o->type === 'income' ? 'доход на' : 'расход с').' «'.$account->name.'»' : ''));
@@ -148,9 +151,14 @@ final class DebtController extends BaseController
         $o->date = $st->date;
         $o->amount = $paid;
         if ($paidCur !== $account->currency) {
+            // the debt's own currency matches the account: the settled amount is exact, no market rate needed
+            $converted = $st->currency === $account->currency ? $st->amount : $rates->convert($paid, $paidCur, $account->currency, $st->date);
+            if (!$converted) {
+                return null;
+            }
             $o->origAmount = $paid;
             $o->origCurrency = $paidCur;
-            $o->amount = $rates->convert($paid, $paidCur, $account->currency, $st->date) ?? $paid;
+            $o->amount = $converted;
         }
         $o->note = 'Возврат долга: '.$st->from->name.' → '.$st->to->name;
         $o->createdBy = $scope->me;

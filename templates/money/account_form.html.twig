@@ -7,9 +7,15 @@
     <label>Тип
         <select name="type">{% for k, v in constant('App\\Money\\Entity\\Account::TYPES') %}<option value="{{ k }}" {{ k == account.type ? 'selected' }}>{{ v }}</option>{% endfor %}</select>
     </label>
-    <label>Валюта {% if locked %}<small class="muted">— нельзя менять, есть операции</small>{% endif %}
-        {% include '_currency_select.html.twig' with {value: account.currency, disabled: locked} %}
+    <label>Валюта
+        {% include '_currency_select.html.twig' with {value: account.currency} %}
     </label>
+    {% if locked %}
+    <div class="hint" data-relabel hidden>
+        <label class="check"><input type="checkbox" name="relabel" value="1"> Я ошибся валютой при создании счёта — суммы операций остаются теми же числами, меняется только валюта</label>
+        <small>Если деньги на счёте действительно поменяли (обменяли), не меняйте валюту: создайте новый счёт и сделайте перевод-обмен — так сохранится курс.</small>
+    </div>
+    {% endif %}
     <label>Начальный остаток <input name="initial" inputmode="decimal" value="{{ account.initialBalance|money_input(account.currency) }}" placeholder="0"></label>
     <small class="muted">Сколько было на счёте до начала учёта. Для кредитки или долга «я должен» — с минусом.</small>
     {% if not scope.group and my_groups() %}
@@ -27,12 +33,15 @@
 </form>
 {% if not isNew %}
 <div class="actions">
-    <form method="post" action="{{ path('money_account_archive', {scope: scope.key, id: account.id}) }}">
+    <form method="post" action="{{ path('money_account_archive', {scope: scope.key, id: account.id}) }}"{% if not account.archived and balance != 0 %} data-confirm="На счёте {{ balance|money(account.currency) }}. В архиве он пропадёт из итогов и списков. Обычно сначала переводят остаток на другой счёт. Всё равно в архив?"{% endif %}>
         <input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn">{{ account.archived ? 'Вернуть из архива' : 'В архив' }}</button>
     </form>
-    <form method="post" action="{{ path('money_account_delete', {scope: scope.key, id: account.id}) }}" data-confirm="Удалить счёт?">
+    {% if not locked %}
+    <form method="post" action="{{ path('money_account_delete', {scope: scope.key, id: account.id}) }}" data-confirm="Удалить счёт насовсем?">
         <input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn danger">Удалить</button>
     </form>
+    {% endif %}
 </div>
+{% if locked %}<p class="muted small">По счёту есть операции — удалить его нельзя, только в архив: история сохранится.</p>{% endif %}
 {% endif %}
 {% endblock %}

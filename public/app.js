@@ -156,6 +156,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     signupCurrency?.addEventListener('change', () => { signupCurrency.dataset.touched = '1'; });
 
+    // changing an account's currency when it has operations: explain the choice
+    const relabel = document.querySelector('[data-relabel]');
+    if (relabel) {
+        const cur = relabel.closest('form').querySelector('select[name=currency]'), initial = cur.value;
+        const sync = () => { relabel.hidden = cur.value === initial; };
+        cur.addEventListener('change', sync);
+        sync();
+    }
+
     // show / hide password
     document.querySelectorAll('[data-pw-toggle]').forEach(b => b.addEventListener('click', () => {
         const input = document.getElementById(b.getAttribute('aria-controls'));
@@ -394,9 +403,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const fx = () => {
             const type = form.querySelector('[name=type]:checked').value;
             const acc = cur('[data-currency-source]');
-            // another account picked: a sum that was in the old account's currency follows the new one
+            // another account picked: a sum that was in the old account's currency follows the new one,
+            // and a rate / credited sum typed for the old account no longer applies
+            if (acc !== lastAcc && rateIn) { rateIn.value = ''; credIn.value = ''; manual = false; }
             if (acc && acc !== lastAcc && amtCur.value === lastAcc) { lastAcc = acc; amtCur.value = acc; amtCur.dispatchEvent(new Event('change', {bubbles: true})); return; }
             lastAcc = acc;
+            const forIn = $('[data-fx-credited-for]');
+            if (forIn) forIn.value = $('[name=account]').value;
             const accountShown = !$('[data-account]').hidden;
             show($('[data-amount-cur]'), type !== 'transfer' && accountShown);
             const foreign = type !== 'transfer' && accountShown && !!acc && amtCur.value !== acc;
