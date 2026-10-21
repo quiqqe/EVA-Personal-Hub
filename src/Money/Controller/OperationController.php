@@ -34,6 +34,9 @@ final class OperationController extends BaseController
     public function index(Request $r, Scope $scope): Response
     {
         $month = \DateTimeImmutable::createFromFormat('!Y-m', (string) $r->query->get('m')) ?: new \DateTimeImmutable('first day of this month midnight');
+        // a report's year or custom period opens here as from–to (inclusive) instead of one month
+        $range = Dates::parse((string) $r->query->get('from')) && Dates::parse((string) $r->query->get('to'))
+            ? [Dates::parse((string) $r->query->get('from')), Dates::parse((string) $r->query->get('to'))] : null;
         $q = trim((string) $r->query->get('q'));
         $qb = $this->ledger->operations($scope)->leftJoin('o.category', 'c')
             ->orderBy('o.date', \SortDirection::Descending)->addOrderBy('o.id', \SortDirection::Descending);
@@ -49,7 +52,7 @@ final class OperationController extends BaseController
             $qb->andWhere($where)->setParameter('q', $like)->setMaxResults(500);
         } else {
             $qb->andWhere('o.date >= :from AND o.date < :to')
-                ->setParameter('from', $month, 'date_immutable')->setParameter('to', $month->modify('+1 month'), 'date_immutable');
+                ->setParameter('from', $range[0] ?? $month, 'date_immutable')->setParameter('to', $range ? $range[1]->modify('+1 day') : $month->modify('+1 month'), 'date_immutable');
         }
         $filters = ['account' => (string) $r->query->get('account'), 'category' => (string) $r->query->get('category'), 'type' => (string) $r->query->get('type')];
         // viewing one account: show its card (balance, opening balance, edit) above the list
@@ -102,6 +105,7 @@ final class OperationController extends BaseController
             'sum' => $sum,
             'in' => $in,
             'month' => $month,
+            'range' => $range,
             'q' => $q,
             'filters' => $filters,
             'accounts' => $this->ledger->accounts($scope, archived: true),

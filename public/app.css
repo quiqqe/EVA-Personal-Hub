@@ -514,6 +514,10 @@ fieldset.share .check { margin: var(--s2) 0; }
 
 .basis-seg { grid-template-columns: 1fr 1fr; margin-bottom: var(--s2); }
 .basis-seg a { display: block; text-align: center; padding: 10px 4px; border-radius: 11px; color: var(--muted); font-weight: 650; }
+.period-seg { grid-template-columns: repeat(3, 1fr); margin-bottom: var(--s4); }
+.range-form { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: end; margin-bottom: var(--s4); }
+.range-form label { flex: 1 1 130px; margin: 0; font-size: 13px; color: var(--muted); }
+.range-form input { margin-top: 4px; }
 .basis-seg a.on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
 
 .type-hint { margin: -10px 0 var(--s4); font-size: 13px; color: var(--muted); }

@@ -1,34 +1,60 @@
 {% extends 'money/layout.html.twig' %}
 {% set cur = in %}
 {% block body %}
-<div class="month-nav">
-    <a href="{{ path('money_reports', {scope: scope.key, m: month.modify('-1 month').format('Y-m'), basis: basis}) }}">‹</a>
-    <b>{{ month|date('m.Y') }}</b>
-    <a href="{{ path('money_reports', {scope: scope.key, m: month.modify('+1 month').format('Y-m'), basis: basis}) }}">›</a>
+{% set pq = p == 'month' ? {m: from.format('Y-m')} : (p == 'year' ? {p: 'year', y: from.format('Y')} : {p: 'range', from: from.format('Y-m-d'), to: last.format('Y-m-d')}) %}
+{% set base = {scope: scope.key, basis: basis} %}
+<div class="seg basis-seg period-seg" role="tablist" aria-label="Период">
+    {% for k, v in periods %}<a role="tab" class="{{ p == k ? 'on' }}" href="{{ path('money_reports', base|merge(k == 'month' ? {m: from.format('Y-m')} : (k == 'year' ? {p: 'year', y: from.format('Y')} : {p: 'range', from: from.format('Y-m-d'), to: last.format('Y-m-d')}))) }}">{{ v }}</a>{% endfor %}
 </div>
+{% if p == 'range' %}
+<form class="range-form" method="get">
+    <input type="hidden" name="p" value="range">{% if basis %}<input type="hidden" name="basis" value="{{ basis }}">{% endif %}
+    <label>С<input type="date" name="from" value="{{ from.format('Y-m-d') }}" required></label>
+    <label>По<input type="date" name="to" value="{{ last.format('Y-m-d') }}" required></label>
+    <button class="btn small primary">Показать</button>
+</form>
+{% else %}
+{% set step = p == 'year' ? '1 year' : '1 month' %}
+{% set key = p == 'year' ? 'y' : 'm' %}
+{% set fmt = p == 'year' ? 'Y' : 'Y-m' %}
+<div class="month-nav">
+    <a href="{{ path('money_reports', base|merge(pq)|merge({(key): from.modify('-' ~ step).format(fmt)})) }}" aria-label="Назад">‹</a>
+    <b>{{ p == 'year' ? from|date('Y') ~ ' год' : from|date('m.Y') }}</b>
+    <a href="{{ path('money_reports', base|merge(pq)|merge({(key): from.modify('+' ~ step).format(fmt)})) }}" aria-label="Вперёд">›</a>
+</div>
+{% endif %}
 {% if basis %}
 <div class="seg basis-seg" role="tablist" aria-label="Что считать">
-    {% for k, v in bases %}<a role="tab" class="{{ basis == k ? 'on' }}" href="{{ path('money_reports', {scope: scope.key, m: month.format('Y-m'), basis: k}) }}">{{ v }}</a>{% endfor %}
+    {% for k, v in bases %}<a role="tab" class="{{ basis == k ? 'on' }}" href="{{ path('money_reports', base|merge(pq)|merge({basis: k})) }}">{{ v }}</a>{% endfor %}
 </div>
 <p class="muted small">{{ basis == 'common' ? 'Операции по общим счетам группы и личным картам, которые ей показаны. Возвраты долгов не считаются.' : 'Всё, что внесли внутри группы, с любых счетов, разделённые траты — целиком.' }}</p>
 {% endif %}
 <section class="hero">
     <div class="hero-head"><small>Итоги</small>{% include 'money/_in_switch.html.twig' %}</div>
     <div class="month">
-        <span>Доходы <b class="income">+{{ income.total|money(cur, true) }}</b></span>
-        <span>Расходы <b class="expense">−{{ expense.total|money(cur, true) }}</b></span>
+        <span>Доходы <b class="income">{{ income.total ? "+" }}{{ income.total|money(cur, true) }}</b></span>
+        <span>Расходы <b class="expense">{{ expense.total ? "−" }}{{ expense.total|money(cur, true) }}</b></span>
     </div>
     {% set diff = income.total - expense.total %}
-    <small class="sub">Итог месяца: <b>{{ diff|money(cur, true) }}</b></small>
-    {% set missing = expense.missing|merge(income.missing)|merge(monthlyMissing) %}
-    {% if missing %}<small class="muted">без учёта {{ missing|join(', ') }} — нет курса</small>{% endif %}
+    <small class="sub">Итог {{ p == 'month' ? 'месяца' : (p == 'year' ? 'года' : 'периода') }}: <b>{{ diff|money(cur, true) }}</b>{% if p == 'range' %} · {{ from|date('d.m.Y') }} – {{ last|date('d.m.Y') }}{% endif %}</small>
+    {% set was = p == 'month' ? 'прошлым месяцем' : (p == 'year' ? 'прошлым годом' : 'таким же периодом до') %}
+    {% if prev.income or prev.expense %}
+    <small class="sub">По сравнению с {{ was }}:
+        {% for k, label in {expense: 'расходы', income: 'доходы'} %}
+            {% set now = k == 'expense' ? expense.total : income.total %}{% set before = prev[k] %}
+            {{ label }} {% if before == 0 %}— тогда не было{% else %}{% set d = ((now - before) / before * 100)|round %}<b>{{ d > 0 ? '+' }}{{ d }}%</b> (было {{ before|money(cur, true) }}){% endif %}{{ not loop.last ? ' · ' }}
+        {% endfor %}
+    </small>
+    {% endif %}
+    {% set missing = expense.missing|merge(income.missing)|merge(monthlyMissing)|merge(prev.missing) %}
+    {% if missing %}<small class="muted">без учёта {{ missing|reduce((c, v) => v in c ? c : c|merge([v]), [])|join(', ') }} — нет курса</small>{% endif %}
 </section>
 
 {% for title, data in {'Расходы по категориям': expense, 'Доходы по категориям': income} %}
 <section class="card">
     <h2>{{ title }}</h2>
     {% for row in data.rows %}
-        <a class="progress" href="{{ path('money_operations', {scope: scope.key, m: month.format('Y-m'), category: row.category ? row.category.id : 'none'}) }}">
+        <a class="progress" href="{{ path('money_operations', {scope: scope.key, from: from.format('Y-m-d'), to: last.format('Y-m-d'), category: row.category ? row.category.id : 'none'}) }}">
             <div class="row"><span>{{ row.category ? row.category.label : 'Без категории' }}{% if row.foreign %} <small class="muted">· {{ row.foreign }}</small>{% endif %}</span><span>{{ row.amount|money(cur, true) }} <small class="muted">{{ (row.amount / max(1, data.total) * 100)|round }}%</small></span></div>
             {% include 'money/_bar.html.twig' with {value: row.amount, max: data.rows[0].amount, plain: true} %}
         </a>
@@ -52,7 +78,7 @@
     <div class="scroll"><table class="table">
         <tr><th>Месяц</th><th>Доходы</th><th>Расходы</th><th>Итог</th></tr>
         {% for m, v in monthly|reverse %}
-            <tr><td>{{ m|slice(5, 2) }}.{{ m|slice(0, 4) }}</td><td class="income">{{ v.income ? v.income|money(cur, true) : '—' }}</td><td class="expense">{{ v.expense ? v.expense|money(cur, true) : '—' }}</td><td>{{ v.income or v.expense ? (v.income - v.expense)|money(cur, true) : '—' }}</td></tr>
+            <tr><td><a href="{{ path('money_reports', base|merge({m: m})) }}">{{ m|slice(5, 2) }}.{{ m|slice(0, 4) }}</a></td><td class="income">{{ v.income ? v.income|money(cur, true) : '—' }}</td><td class="expense">{{ v.expense ? v.expense|money(cur, true) : '—' }}</td><td>{{ v.income or v.expense ? (v.income - v.expense)|money(cur, true) : '—' }}</td></tr>
         {% endfor %}
     </table></div>
 </section>
