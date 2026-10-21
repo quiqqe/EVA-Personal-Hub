@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Tests;
 
 use App\Money\Csv;
-use App\TelegramAuth;
+use App\Telegram;
 use App\Money\Debts;
 use App\Money\Money;
 use App\Money\Rates;
@@ -53,26 +53,27 @@ final class MoneyLogicTest extends TestCase
         self::assertSame(1.0, $c['RUB']);
     }
 
-    public function testTelegramSignature(): void
+    public function testTelegramUpdates(): void
     {
-        $token = '123:ABC';
-        $data = ['id' => '42', 'first_name' => 'Рома', 'username' => 'roma', 'auth_date' => '1000'];
-        ksort($data);
-        $check = implode("\n", array_map(fn ($k, $v) => "$k=$v", array_keys($data), $data));
-        $data['hash'] = hash_hmac('sha256', $check, hash('sha256', $token, true));
+        $start = ['message' => ['text' => '/start 0123abcdef', 'chat' => ['id' => 5, 'type' => 'private'], 'from' => ['id' => 42, 'first_name' => 'Рома']]];
+        self::assertSame(['kind' => 'start', 'tgId' => 42, 'name' => 'Рома', 'chatId' => 5, 'param' => '0123abcdef'], Telegram::parse($start));
 
-        self::assertSame(['id' => 42, 'name' => 'Рома'], TelegramAuth::check($data, $token, 2000));
-        self::assertNull(TelegramAuth::check(['first_name' => 'Хакер'] + $data, $token, 2000), 'tampered field');
-        self::assertNull(TelegramAuth::check($data, 'other:TOKEN', 2000), 'another bot');
-        self::assertNull(TelegramAuth::check($data, $token, 1000 + 86401), 'expired');
-        self::assertNull(TelegramAuth::check(['hash' => ''] + $data, $token, 2000), 'no hash');
-        self::assertNull(TelegramAuth::check($data + ['admin' => '1'], $token, 2000), 'extra unsigned field');
+        $plain = $start;
+        $plain['message']['text'] = '/start';
+        self::assertSame('', Telegram::parse($plain)['param'] ?? null);
 
-        // a field Telegram adds later is signed too and must not break the check
-        $new = ['id' => '42', 'first_name' => 'Рома', 'auth_date' => '1000', 'photo_url' => 'https://t.me/i/x.jpg', 'new_field' => 'v'];
-        ksort($new);
-        $new['hash'] = hash_hmac('sha256', implode("\n", array_map(fn ($k, $v) => "$k=$v", array_keys($new), $new)), hash('sha256', $token, true));
-        self::assertSame(42, TelegramAuth::check($new, $token, 2000)['id'] ?? null);
+        $group = $start;
+        $group['message']['chat']['type'] = 'group';
+        self::assertNull(Telegram::parse($group), 'only private chats');
+        $text = $start;
+        $text['message']['text'] = 'привет';
+        self::assertNull(Telegram::parse($text));
+        $weird = $start;
+        $weird['message']['text'] = '/start ../../etc';
+        self::assertNull(Telegram::parse($weird), 'code charset is restricted');
+
+        $button = ['callback_query' => ['id' => 'q1', 'data' => 'login:abc', 'from' => ['id' => 42, 'username' => 'roma'], 'message' => ['message_id' => 9, 'chat' => ['id' => 5]]]];
+        self::assertSame(['kind' => 'button', 'tgId' => 42, 'name' => 'roma', 'chatId' => 5, 'param' => 'login:abc', 'callbackId' => 'q1', 'messageId' => 9], Telegram::parse($button));
     }
 
     public function testInputRoundTrip(): void

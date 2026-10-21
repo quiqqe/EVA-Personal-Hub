@@ -19,7 +19,9 @@ php bin/phpunit                     # unit-тесты расчётов, без �
 ```
 src/Entity/            общее для хаба: User, Group, Membership
 src/Controller/        вход/регистрация (email и Telegram), профиль, главная-хаб, группы и приглашения
-src/TelegramAuth.php   проверка подписи Telegram Login Widget
+src/Telegram.php       бот: вызовы Bot API, разбор входящих обновлений
+src/Entity/TelegramLogin  попытка входа/привязки через бота (код, кто нажал «Старт», подтверждено ли)
+src/Command/           app:telegram:webhook — регистрирует webhook бота (запускается из bin/deploy)
 src/Repository/        UserRepository: загрузка пользователя по email или «tg:<id>»
 src/Money/             инструмент «Деньги»
   Entity/              Account, Category, Operation, Split, Settlement, Budget, Goal, Recurring (+ трейт Scoped)
@@ -56,8 +58,11 @@ tests/MoneyLogicTest   unit-тесты Money, Debts, Schedule, Csv
 
 ## Безопасность
 
-- Telegram: `TELEGRAM_BOT_TOKEN` и `TELEGRAM_BOT_USERNAME` — только в `.env.local`; без них кнопка не показывается.
-  Подпись — HMAC-SHA256 от отсортированных полей с ключом sha256(токен), срок — сутки.
+- Telegram: `TELEGRAM_BOT_TOKEN` и `TELEGRAM_BOT_USERNAME` — только в `.env.local`; без них кнопки не показываются.
+  Вход: `/login/telegram` создаёт код (в сессии браузера) → бот по webhook получает `/start <код>`, спрашивает
+  подтверждение → `callback_query` от того же Telegram-аккаунта ставит `confirmedAt` → браузер опрашивает
+  `/login/telegram/check` и входит. Webhook `/telegram/webhook` принимает только запросы с заголовком
+  `X-Telegram-Bot-Api-Secret-Token` = HMAC(токен бота) — отдельного секрета не нужно.
 
 - Все POST-формы с `csrf_token('form')` (`BaseController::checkCsrf`), вход — с CSRF и лимитом попыток (5/мин).
 - Любой id из URL/формы проверяется на принадлежность пространству (`Scope::owns`, `Ledger::visible`, выборки

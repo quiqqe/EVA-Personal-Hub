@@ -28,7 +28,7 @@
         </form>
     {% else %}
         <p class="muted">Привяжите Telegram, чтобы входить в один тап.</p>
-        {% include '_telegram_login.html.twig' with {url: url('profile_telegram_link')} %}
+        {% include '_telegram_button.html.twig' with {href: path('profile_telegram_link'), label: 'Привязать Telegram'} %}
     {% endif %}
 </section>
 {% endif %}

@@ -7,7 +7,7 @@
     {% if error %}<div class="flash flash-error" role="alert">{{ error }}</div>{% endif %}
 
     {% if telegram_bot() %}
-        {% include '_telegram_login.html.twig' with {url: url('login_telegram')} %}
+        {% include '_telegram_button.html.twig' with {href: path('login_telegram')} %}
         <div class="or"><span>или по email</span></div>
     {% endif %}
 

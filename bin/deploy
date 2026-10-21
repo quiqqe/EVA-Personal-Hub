@@ -46,6 +46,8 @@ compose() { docker compose -f compose.prod.yaml --env-file "$ENV_FILE" "$@"; }
 compose build --pull
 compose up -d --remove-orphans
 compose exec -T app bin/console doctrine:migrations:migrate -n --allow-no-migration
+# point the Telegram bot at this site; a Telegram hiccup must not fail the deploy
+compose exec -T app bin/console app:telegram:webhook || echo "Warning: Telegram webhook not set, sign-in via Telegram may not work" >&2
 
 port="$(get_var HTTP_PORT)"
 for i in $(seq 1 30); do

@@ -26,6 +26,29 @@ document.addEventListener('DOMContentLoaded', () => {
         input.focus();
     }));
 
+    // Telegram sign-in: open the app (desktop: tg:// straight into Telegram Desktop, phones: t.me opens the app if installed),
+    // then poll until the person confirms in the bot
+    const wait = document.querySelector('[data-tg-wait]');
+    if (wait) {
+        const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        const open = wait.querySelector('[data-tg-open]');
+        open.href = mobile ? wait.dataset.web : wait.dataset.app;
+        if (mobile) { open.target = '_blank'; open.rel = 'noopener'; }
+        const status = wait.querySelector('[data-tg-status]');
+        let done = false;
+        const check = async () => {
+            if (done) return;
+            try {
+                const r = await (await fetch(wait.dataset.check, {headers: {Accept: 'application/json'}, credentials: 'same-origin'})).json();
+                if (r.status === 'ok') { done = true; status.textContent = '✅ Готово, входим…'; location.href = r.redirect; }
+                if (r.status === 'expired') { done = true; status.textContent = 'Время ожидания вышло — начните заново.'; }
+            } catch (e) { /* network hiccup: try again on the next tick */ }
+        };
+        setInterval(check, 2000);
+        // coming back from the Telegram app: check right away
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+    }
+
     // space switcher and other <select data-nav>
     document.querySelectorAll('select[data-nav]').forEach(s => s.addEventListener('change', () => { location.href = s.value; }));
 

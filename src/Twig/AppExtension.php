@@ -7,14 +7,14 @@ namespace App\Twig;
 use App\Entity\User;
 use App\Money\Ledger;
 use App\Money\Money;
-use App\TelegramAuth;
+use App\Telegram;
 use Symfony\Bundle\SecurityBundle\Security;
 use Twig\Attribute\AsTwigFilter;
 use Twig\Attribute\AsTwigFunction;
 
 final class AppExtension
 {
-    public function __construct(private readonly Security $security, private readonly Ledger $ledger, private readonly TelegramAuth $telegram)
+    public function __construct(private readonly Security $security, private readonly Ledger $ledger, private readonly Telegram $telegram)
     {
     }
 
@@ -61,7 +61,7 @@ final class AppExtension
         return $u instanceof User ? $this->ledger->groupsOf($u) : [];
     }
 
-    /** Bot username for the login widget, or null when Telegram login is not configured */
+    /** Bot username, or null when the bot is not configured (Telegram buttons are hidden then) */
     #[AsTwigFunction('telegram_bot')]
     public function telegramBot(): ?string
     {
