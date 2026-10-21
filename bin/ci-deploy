@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Forced command of the CI deploy key (authorized_keys: restrict,command="<project>/bin/ci-deploy" ssh-ed25519 ...).
+# Whatever the client asks to run, the key can only do this: take known KEY=VALUE settings from stdin,
+# update the code to origin/main and deploy it.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+ALLOWED=" HTTP_PORT DEFAULT_URI TELEGRAM_BOT_TOKEN TELEGRAM_BOT_USERNAME "
+while IFS= read -r line || [ -n "$line" ]; do
+    name="${line%%=*}"
+    if [[ "$ALLOWED" == *" $name "* ]]; then
+        export "$name=${line#*=}"
+    fi
+done
+
+git fetch --quiet origin main
+git reset --quiet --hard origin/main
+exec bin/deploy

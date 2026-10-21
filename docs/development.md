@@ -66,16 +66,19 @@ tests/MoneyLogicTest   unit-тесты Money, Debts, Schedule, Csv
 
 ## Деплой
 
-- `git push` в `main` → GitHub Actions (`.github/workflows/deploy.yml`): тесты, затем по SSH на сервере
-  `git reset --hard origin/main` и `bin/deploy`. Деплой включается переменной репозитория `DEPLOY_ENABLED=true`.
+- `git push` в `main` → GitHub Actions (`.github/workflows/deploy.yml`): тесты, затем SSH на сервер.
+  Ключ CI на сервере ограничен: `restrict,command="<проект>/bin/ci-deploy"` в `authorized_keys` — он умеет только
+  `bin/ci-deploy`: принять известные `KEY=VALUE` из stdin, `git reset --hard origin/main`, `bin/deploy`.
+  Деплой включается переменной репозитория `DEPLOY_ENABLED=true`.
 - `bin/deploy`: пишет в `.env.local` настройки, переданные из GitHub Secrets; `APP_SECRET` и `POSTGRES_PASSWORD`
   генерирует при первом запуске и больше не меняет; без обязательных переменных останавливается до сборки
   (сайт остаётся на старой версии); собирает образ, поднимает, применяет миграции, проверяет, что сайт отвечает.
-- Секреты GitHub: `SSH_KEY`, `SSH_KNOWN_HOSTS`, `SSH_HOST`, `SSH_USER`, `DEPLOY_PATH`, `HTTP_PORT`, `DEFAULT_URI`,
+- Секреты GitHub: `SSH_KEY`, `SSH_KNOWN_HOSTS`, `SSH_HOST`, `SSH_USER`, `HTTP_PORT`, `DEFAULT_URI`,
   `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`.
 
-**Новая переменная окружения:** пустой плейсхолдер с комментарием в `.env`, имя — в `PASSED` (и в `REQUIRED`,
-если без неё нельзя) в `bin/deploy` и в `env` + список `for v in ...` в workflow; значение — `gh secret set ИМЯ`.
+**Новая переменная окружения:** пустой плейсхолдер с комментарием в `.env`; имя — в `ALLOWED` в `bin/ci-deploy`,
+в `PASSED` (и `REQUIRED`, если без неё нельзя) в `bin/deploy`, в `env` и список `for v in ...` в workflow;
+значение — `gh secret set ИМЯ`.
 
 ## Новый инструмент
 

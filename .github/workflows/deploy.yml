@@ -34,8 +34,7 @@ jobs:
           SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          # app settings forwarded into the server's .env.local (see PASSED in bin/deploy)
+          # app settings forwarded into the server's .env.local (see ALLOWED in bin/ci-deploy, PASSED in bin/deploy)
           HTTP_PORT: ${{ secrets.HTTP_PORT }}
           DEFAULT_URI: ${{ secrets.DEFAULT_URI }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -44,11 +43,7 @@ jobs:
           install -m 700 -d ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          {
-            for v in HTTP_PORT DEFAULT_URI TELEGRAM_BOT_TOKEN TELEGRAM_BOT_USERNAME; do
-              printf 'export %s=%q\n' "$v" "${!v}"
-            done
-            printf 'cd %q\n' "$DEPLOY_PATH"
-            echo 'git fetch --quiet origin main && git reset --quiet --hard origin/main'
-            echo 'bin/deploy'
-          } | ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$SSH_USER@$SSH_HOST" 'bash -s'
+          # the key is locked to bin/ci-deploy on the server: it only reads these settings and deploys main
+          for v in HTTP_PORT DEFAULT_URI TELEGRAM_BOT_TOKEN TELEGRAM_BOT_USERNAME; do
+            printf '%s=%s\n' "$v" "${!v}"
+          done | ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$SSH_USER@$SSH_HOST"
