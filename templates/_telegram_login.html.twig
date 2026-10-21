@@ -1,6 +1,6 @@
 {# Telegram Login Widget; `url` is where Telegram sends the signed data back #}
 {% if telegram_bot() %}
     <div class="tg-login">
-        <script async src="https://telegram.org/js/telegram-widget.js?22" data-telegram-login="{{ telegram_bot() }}" data-size="large" data-radius="12" data-auth-url="{{ url }}" data-request-access="write"></script>
+        <script async src="https://telegram.org/js/telegram-widget.js?22" data-telegram-login="{{ telegram_bot() }}" data-size="large" data-radius="12" data-auth-url="{{ url }}"></script>
     </div>
 {% endif %}

@@ -40,7 +40,9 @@ final readonly class TelegramAuth
     public static function check(array $data, string $token, int $now): ?array
     {
         $hash = (string) ($data['hash'] ?? '');
-        $fields = array_intersect_key($data, array_flip(['id', 'first_name', 'last_name', 'username', 'photo_url', 'auth_date']));
+        // every received field except hash is signed, including ones Telegram may add later
+        $fields = $data;
+        unset($fields['hash']);
         ksort($fields);
         $check = implode("\n", array_map(fn ($k, $v) => "$k=$v", array_keys($fields), $fields));
         $expected = hash_hmac('sha256', $check, hash('sha256', $token, true));

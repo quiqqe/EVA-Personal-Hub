@@ -66,6 +66,13 @@ final class MoneyLogicTest extends TestCase
         self::assertNull(TelegramAuth::check($data, 'other:TOKEN', 2000), 'another bot');
         self::assertNull(TelegramAuth::check($data, $token, 1000 + 86401), 'expired');
         self::assertNull(TelegramAuth::check(['hash' => ''] + $data, $token, 2000), 'no hash');
+        self::assertNull(TelegramAuth::check($data + ['admin' => '1'], $token, 2000), 'extra unsigned field');
+
+        // a field Telegram adds later is signed too and must not break the check
+        $new = ['id' => '42', 'first_name' => 'Рома', 'auth_date' => '1000', 'photo_url' => 'https://t.me/i/x.jpg', 'new_field' => 'v'];
+        ksort($new);
+        $new['hash'] = hash_hmac('sha256', implode("\n", array_map(fn ($k, $v) => "$k=$v", array_keys($new), $new)), hash('sha256', $token, true));
+        self::assertSame(42, TelegramAuth::check($new, $token, 2000)['id'] ?? null);
     }
 
     public function testInputRoundTrip(): void
