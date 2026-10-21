@@ -129,13 +129,15 @@ final class Ledger
     public function byCategory(Scope $s, string $type, \DateTimeImmutable $from, \DateTimeImmutable $to, ?string $in = null): array
     {
         $in ??= $s->currency();
-        $rows = $this->operations($s)->select('IDENTITY(o.category) cid, o.currency cur, SUM(o.amount) s')
+        $rows = $this->operations($s)->select('IDENTITY(o.category) cid, o.date d, o.currency cur, SUM('.$this->amountField($s).') s')
             ->andWhere('o.type = :t AND o.date >= :from AND o.date < :to')
             ->setParameter('t', $type)->setParameter('from', $from, 'date_immutable')->setParameter('to', $to, 'date_immutable')
-            ->groupBy('o.category, o.currency')->getQuery()->getArrayResult();
+            ->groupBy('o.category, o.date, o.currency')->getQuery()->getArrayResult();
+        $this->prefetchRates($rows, $in);
         $sums = $missing = [];
         foreach ($rows as $r) {
-            $v = $this->rates->convert((int) $r['s'], $r['cur'], $in);
+            // each operation at the rate of its own day
+            $v = $this->rates->convert((int) $r['s'], $r['cur'], $in, $r['d']);
             $v === null ? $missing[] = $r['cur'] : $sums[$r['cid'] ?? ''] = ($sums[$r['cid'] ?? ''] ?? 0) + $v;
         }
         arsort($sums);
@@ -155,14 +157,27 @@ final class Ledger
         for ($i = 0; $i < $months; ++$i) {
             $out[$from->modify("+$i months")->format('Y-m')] = ['income' => 0, 'expense' => 0];
         }
-        $rows = $this->operations($s)->select('o.date d, o.type t, o.currency cur, SUM(o.amount) s')
+        $rows = $this->operations($s)->select('o.date d, o.type t, o.currency cur, SUM('.$this->amountField($s).') s')
             ->andWhere("o.type IN ('income', 'expense') AND o.date >= :from")->setParameter('from', $from, 'date_immutable')
             ->groupBy('o.date, o.type, o.currency')->getQuery()->getArrayResult();
+        $this->prefetchRates($rows, $in);
         foreach ($rows as $r) {
-            $out[$r['d']->format('Y-m')][$r['t']] += $this->rates->convert((int) $r['s'], $r['cur'], $in) ?? 0;
+            $out[$r['d']->format('Y-m')][$r['t']] += $this->rates->convert((int) $r['s'], $r['cur'], $in, $r['d']) ?? 0;
         }
 
         return $out;
+    }
+
+    /** In my personal space a shared bill counts with what left my account; the group counts the whole bill. */
+    private function amountField(Scope $s): string
+    {
+        return $s->group ? 'o.amount' : 'COALESCE(o.accountAmount, o.amount)';
+    }
+
+    /** @param list<array{d: \DateTimeImmutable, cur: string}> $rows */
+    private function prefetchRates(array $rows, string $in): void
+    {
+        $this->rates->prefetch(array_column(array_filter($rows, fn ($r) => $r['cur'] !== $in), 'd'));
     }
 
     /**

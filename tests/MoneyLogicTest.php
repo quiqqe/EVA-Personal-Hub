@@ -7,6 +7,7 @@ namespace App\Tests;
 use App\Money\Csv;
 use App\Money\Debts;
 use App\Money\Money;
+use App\Money\Rates;
 use App\Money\Schedule;
 use PHPUnit\Framework\TestCase;
 
@@ -36,6 +37,19 @@ final class MoneyLogicTest extends TestCase
         self::assertSame("1\u{00A0}543,15\u{00A0}USDT", Money::format(1543150095, 'USDT'));
         self::assertSame('0.0005', Money::toInput(50000, 'BTC'));
         self::assertArrayHasKey('USDT', Money::choices());
+    }
+
+    public function testRateSources(): void
+    {
+        // snapshot: units per one rouble, only our currencies kept, inverted to roubles per unit
+        $r = Rates::parseSnapshot('{"date":"2025-06-15","rub":{"usd":0.0125,"amd":4.8,"usdt":0.0125,"xyz":1}}');
+        self::assertEqualsWithDelta(80.0, $r['USD'], 1e-9);
+        self::assertEqualsWithDelta(0.2083333, $r['AMD'], 1e-6);
+        self::assertArrayHasKey('USDT', $r);
+        self::assertArrayNotHasKey('XYZ', $r);
+        $c = Rates::parseCbr('{"Valute":{"AMD":{"Nominal":100,"Value":19.6424}}}');
+        self::assertEqualsWithDelta(0.196424, $c['AMD'], 1e-9);
+        self::assertSame(1.0, $c['RUB']);
     }
 
     public function testInputRoundTrip(): void
