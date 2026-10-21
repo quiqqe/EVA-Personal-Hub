@@ -28,6 +28,20 @@ class Settlement
     #[ORM\Column(length: 10, nullable: true)]
     public ?string $origCurrency = null;
 
+    /** The payer's own record of it: an expense on their account (each side attaches their own account) */
+    #[ORM\ManyToOne, ORM\JoinColumn(onDelete: 'SET NULL')]
+    public ?Operation $payerOperation = null;
+
+    /** The receiver's: income on their account */
+    #[ORM\ManyToOne, ORM\JoinColumn(onDelete: 'SET NULL')]
+    public ?Operation $receiverOperation = null;
+
+    /** @return list<Operation> */
+    public function operations(): array
+    {
+        return array_values(array_filter([$this->payerOperation, $this->receiverOperation]));
+    }
+
     public function __construct(
         #[ORM\ManyToOne, ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
         public Group $group,

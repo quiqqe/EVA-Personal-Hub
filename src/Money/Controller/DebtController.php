@@ -7,6 +7,8 @@ namespace App\Money\Controller;
 use App\Controller\BaseController;
 use App\Money\Entity\Settlement;
 use App\Money\Ledger;
+use App\Money\Entity\Account;
+use App\Money\Entity\Operation;
 use App\Money\Fx;
 use App\Money\Money;
 use App\Money\Rates;
@@ -35,8 +37,24 @@ final class DebtController extends BaseController
             if (Uuid::isValid((string) $p->get('delete'))) {
                 $s = $em->find(Settlement::class, (string) $p->get('delete'));
                 if ($s?->group === $scope->group) {
+                    // the money movements recorded for it go too
+                    foreach ($s->operations() as $o) {
+                        $em->remove($o);
+                    }
                     $em->remove($s);
                     $em->flush();
+                }
+
+                return $this->redirectToRoute('money_debts', ['scope' => $scope->key()]);
+            }
+            // the other side of an already recorded return puts it on their own account
+            if (Uuid::isValid((string) $p->get('attach'))) {
+                $s = $em->find(Settlement::class, (string) $p->get('attach'));
+                $account = $this->myAccount($ledger, $scope, (string) $p->get('account'));
+                if ($s?->group === $scope->group && $account) {
+                    $this->attach($s, $account, $rates, $scope, $em);
+                    $em->flush();
+                    $this->addFlash('ok', 'Записано на «'.$account->name.'»');
                 }
 
                 return $this->redirectToRoute('money_debts', ['scope' => $scope->key()]);
@@ -66,9 +84,12 @@ final class DebtController extends BaseController
                     $st->origCurrency = $paidCur;
                 }
                 $em->persist($st);
+                $account = $this->myAccount($ledger, $scope, (string) $p->get('account'));
+                $o = $account ? $this->attach($st, $account, $rates, $scope, $em) : null;
                 $em->flush();
                 $this->addFlash('ok', $from->name.' → '.$to->name.': '.Money::format($amount, $currency)
-                    .($st->origCurrency ? ' ('.Money::format($paid, $paidCur).')' : ''));
+                    .($st->origCurrency ? ' ('.Money::format($paid, $paidCur).')' : '')
+                    .($o ? ' · '.($o->type === 'income' ? 'доход на' : 'расход с').' «'.$account->name.'»' : ''));
             }
 
             return $this->redirectToRoute('money_debts', ['scope' => $scope->key()]);
@@ -77,8 +98,54 @@ final class DebtController extends BaseController
         return $this->render('money/debts.html.twig', [
             'scope' => $scope,
             'members' => $members,
+            'myAccounts' => array_values(array_filter($ledger->sourceAccounts($scope), fn (Account $a) => $a->user === $scope->me)),
             'debts' => $ledger->debts($scope->group),
             'settlements' => $em->getRepository(Settlement::class)->findBy(['group' => $scope->group], ['date' => 'DESC', 'id' => 'DESC'], 50),
         ]);
+    }
+
+    private function myAccount(Ledger $ledger, Scope $scope, string $id): ?Account
+    {
+        foreach ($ledger->sourceAccounts($scope) as $a) {
+            if ($a->user === $scope->me && (string) $a->id === $id) {
+                return $a;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Getting a debt back is income, paying one back is an expense — on the recorder's own account,
+     * in the currency the money actually moved in. Each side records only their own account, once.
+     */
+    private function attach(Settlement $st, Account $account, Rates $rates, Scope $scope, EntityManagerInterface $em): ?Operation
+    {
+        $receiving = $st->to === $scope->me;
+        if (!$receiving && $st->from !== $scope->me) {
+            return null;
+        }
+        if ($receiving ? $st->receiverOperation : $st->payerOperation) {
+            return null;
+        }
+        $paid = $st->origAmount ?? $st->amount;
+        $paidCur = $st->origCurrency ?? $st->currency;
+        $o = new Operation();
+        $o->type = $receiving ? 'income' : 'expense';
+        $o->account = $account;
+        $o->currency = $account->currency;
+        $o->date = $st->date;
+        $o->amount = $paid;
+        if ($paidCur !== $account->currency) {
+            $o->origAmount = $paid;
+            $o->origCurrency = $paidCur;
+            $o->amount = $rates->convert($paid, $paidCur, $account->currency, $st->date) ?? $paid;
+        }
+        $o->note = 'Возврат долга: '.$st->from->name.' → '.$st->to->name;
+        $o->createdBy = $scope->me;
+        $em->persist($o);
+        $receiving ? $st->receiverOperation = $o : $st->payerOperation = $o;
+
+        return $o;
     }
 }

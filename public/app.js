@@ -192,7 +192,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const settle = document.querySelector('[data-settle]');
     if (settle) {
         const f = n => settle.querySelector(`[name=${n}]`);
+        const accountBox = settle.querySelector('[data-settle-account]');
         const sync = () => {
+            // my own account: money came in (I'm the receiver) or went out (I'm paying back)
+            if (accountBox) {
+                const me = accountBox.dataset.me, receiving = f('to').value === me, paying = f('from').value === me;
+                accountBox.hidden = !(receiving || paying);
+                f('account').disabled = accountBox.hidden;
+                settle.querySelector('[data-settle-account-label]').textContent = receiving ? 'На какой мой счёт пришли деньги' : 'С какого моего счёта отдал';
+                settle.querySelector('[data-settle-account-hint]').textContent = receiving ? 'Запишется доходом — долг вернули.' : 'Запишется расходом.';
+            }
             const paidCur = f('paid_currency').value, debtCur = f('currency').value, foreign = paidCur !== debtCur;
             const box = settle.querySelector('[data-settle-fx]');
             box.hidden = !foreign;
@@ -204,12 +213,13 @@ document.addEventListener('DOMContentLoaded', () => {
         f('fx_rate').addEventListener('input', () => { const r = parseFloat(f('fx_rate').value.replace(',', '.')), a = parseFloat(f('paid_amount').value.replace(/\s/g, '').replace(',', '.')); if (r > 0 && a > 0) f('amount').value = +(a * r).toFixed(2); });
         document.querySelectorAll('[data-settle-fill]').forEach(a => a.addEventListener('click', () => {
             const d = JSON.parse(a.dataset.settleFill);
-            for (const [k, v] of Object.entries({from: d.from, to: d.to, currency: d.currency, amount: d.amount})) {
+            for (const [k, v] of Object.entries(d)) {
                 f(k).value = v;
                 f(k).dispatchEvent(new Event('change', {bubbles: true}));
             }
-            f('paid_amount').value = '';
-            f('paid_amount').focus();
+            f('amount').value = '';
+            settle.scrollIntoView({behavior: 'smooth', block: 'start'});
+            (accountBox && !accountBox.hidden ? f('account') : f('paid_amount')).focus({preventScroll: true});
         }));
         sync();
     }
