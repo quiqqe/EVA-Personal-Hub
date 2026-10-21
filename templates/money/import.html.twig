@@ -1,0 +1,15 @@
+{% extends 'money/layout.html.twig' %}
+{% block body %}
+<h1>Импорт выписки</h1>
+{% if accounts %}
+<form method="post" enctype="multipart/form-data" class="card stack">
+    <label>Файл CSV из банка <input type="file" name="file" accept=".csv,text/csv,text/plain" required></label>
+    <label>В какой счёт <select name="account">{% for a in accounts %}<option value="{{ a.id }}">{{ a.icon }} {{ a.name }} · {{ a.currency }}</option>{% endfor %}</select></label>
+    <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
+    <button class="btn primary">Дальше</button>
+</form>
+<p class="muted small">Кодировка и разделитель определяются сами. На следующем шаге проверите колонки и увидите, что получится. Повторный импорт той же выписки не создаёт дублей.</p>
+{% else %}
+<p class="muted">Сначала <a href="{{ path('money_account_new', {scope: scope.key}) }}">добавьте счёт</a>.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends 'base.html.twig' %}
+{% block title %}Регистрация — EVA{% endblock %}
+{% block header %}{% endblock %}
+{% block body %}
+<form method="post" class="card narrow auth">
+    <div class="brand-mark">E</div>
+    <h1>Регистрация</h1>
+    <p class="lead">Один аккаунт для всех инструментов</p>
+    {% if error %}<div class="flash flash-error">{{ error }}</div>{% endif %}
+    <label>Имя <input name="name" value="{{ app.request.request.get('name') }}" required maxlength="100" autocomplete="given-name"></label>
+    <label>Email <input type="email" name="email" value="{{ app.request.request.get('email') }}" required autocomplete="email"></label>
+    <label>Пароль <input type="password" name="password" required minlength="8" autocomplete="new-password"></label>
+    <label>Основная валюта {% include '_currency_select.html.twig' with {value: app.request.request.get('currency', 'RUB')} %}</label>
+    <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
+    <button class="btn primary wide">Создать аккаунт</button>
+    <p class="muted center">Уже есть аккаунт? <a href="{{ path('login') }}">Войти</a></p>
+</form>
+{% endblock %}

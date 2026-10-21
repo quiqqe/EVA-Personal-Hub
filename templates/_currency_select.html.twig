@@ -1,0 +1,4 @@
+{# short: option text is just the code, for compact pickers #}
+<select name="{{ name|default('currency') }}" {{ disabled|default(false) ? 'disabled' }} aria-label="Валюта">
+    {% for code, label in currencies() %}<option value="{{ code }}" {{ code == value ? 'selected' }}>{{ short|default(false) ? code : label }}</option>{% endfor %}
+</select>

@@ -1,0 +1,3 @@
+{# progress bar: value / max; plain = a share, not a limit, so no warning colors #}
+{% set pct = max > 0 ? min(100, (value / max * 100)|round) : 0 %}
+<div class="bar {{ plain|default(false) ? '' : (value > max ? 'over' : (pct >= 85 ? 'warn' : '')) }}"><i style="width: {{ pct }}%"></i></div>

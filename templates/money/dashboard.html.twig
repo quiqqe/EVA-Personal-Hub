@@ -1,0 +1,76 @@
+{% extends 'money/layout.html.twig' %}
+{% set cur = in %}
+{% block body %}
+<section class="hero">
+    <div class="hero-head"><small>Всего на счетах</small>{% include 'money/_in_switch.html.twig' %}</div>
+    <div class="big">{{ total|money(cur, true) }}</div>
+    {% if byCurrency|length > 1 %}<small class="sub">{% for c, v in byCurrency %}{{ v|money(c) }}{{ not loop.last ? ' · ' }}{% endfor %}</small>{% endif %}
+    {% if missing %}<small class="sub">без учёта {{ missing|join(', ') }} — нет курса</small>{% endif %}
+    <div class="month">
+        <span>Доходы за месяц <b>+{{ income|money(cur, true) }}</b></span>
+        <span>Расходы за месяц <b>−{{ expense|money(cur, true) }}</b></span>
+    </div>
+</section>
+
+<div class="quick">
+    <a class="btn expense" href="{{ path('money_operation_new', {scope: scope.key, type: 'expense'}) }}"><span>−</span>Расход</a>
+    <a class="btn income" href="{{ path('money_operation_new', {scope: scope.key, type: 'income'}) }}"><span>+</span>Доход</a>
+    <a class="btn" href="{{ path('money_operation_new', {scope: scope.key, type: 'transfer'}) }}"><span>⇄</span>Обмен</a>
+</div>
+
+<section class="card">
+    <div class="card-head"><h2>Счета</h2><a href="{{ path('money_account_new', {scope: scope.key}) }}">＋ счёт</a></div>
+    <div class="list">
+    {% for a in accounts %}
+        <a class="row" href="{{ path('money_operations', {scope: scope.key, account: a.id}) }}">
+            <span><span class="acc-icon">{{ a.icon }}</span>{{ a.name }}</span>
+            <b class="{{ balances[a.id.toRfc4122] < 0 ? 'expense' }}">{{ balances[a.id.toRfc4122]|money(a.currency) }}</b>
+        </a>
+    {% else %}
+        <p class="muted">Добавьте первый счёт: наличные, карту или копилку.</p>
+        <a class="btn primary" href="{{ path('money_account_new', {scope: scope.key, type: 'cash'}) }}">＋ Добавить счёт</a>
+    {% endfor %}
+    </div>
+</section>
+
+{% if debts %}
+<section class="card">
+    <div class="card-head"><h2>Долги в группе</h2><a href="{{ path('money_debts', {scope: scope.key}) }}">подробнее</a></div>
+    {% for c, d in debts %}
+        {% set mine = d.net[app.user.id.toRfc4122] ?? 0 %}
+        {% if mine > 0 %}<p>Вам должны <b class="income">{{ mine|money(c) }}</b></p>
+        {% elseif mine < 0 %}<p>Вы должны <b class="expense">{{ (-mine)|money(c) }}</b></p>
+        {% else %}<p class="muted">В {{ c }} вы в расчёте</p>{% endif %}
+    {% endfor %}
+</section>
+{% endif %}
+
+{% if budgets %}
+<section class="card">
+    <div class="card-head"><h2>Бюджеты на месяц</h2><a href="{{ path('money_plan', {scope: scope.key}) }}">все</a></div>
+    {% for b in budgets %}
+        <div class="progress">
+            <div class="row"><span>{{ b.budget.category.label }}</span><span>{{ b.spent|money(b.budget.currency, true) }} / {{ b.budget.amount|money(b.budget.currency, true) }}</span></div>
+            {% include 'money/_bar.html.twig' with {value: b.spent, max: b.budget.amount} %}
+        </div>
+    {% endfor %}
+</section>
+{% endif %}
+
+{% if goals %}
+<section class="card">
+    <div class="card-head"><h2>Цели</h2><a href="{{ path('money_plan', {scope: scope.key}) }}">все</a></div>
+    {% for g in goals %}
+        <div class="progress">
+            <div class="row"><span>🎯 {{ g.goal.name }}</span><span>{{ g.saved|money(g.goal.account.currency) }} / {{ g.goal.target|money(g.goal.account.currency) }}</span></div>
+            {% include 'money/_bar.html.twig' with {value: g.saved, max: g.goal.target} %}
+        </div>
+    {% endfor %}
+</section>
+{% endif %}
+
+<section class="card">
+    <div class="card-head"><h2>Последние операции</h2><a href="{{ path('money_operations', {scope: scope.key}) }}">все</a></div>
+    {% for o in recent %}{% include 'money/_op.html.twig' %}{% else %}<p class="muted">Операций пока нет</p>{% endfor %}
+</section>
+{% endblock %}

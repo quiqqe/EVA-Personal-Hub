@@ -1,0 +1,54 @@
+{% extends 'money/layout.html.twig' %}
+{% block body %}
+<h1>Долги в группе</h1>
+<p class="muted">Считаются по разделённым расходам: кто сколько заплатил и чья доля сколько.</p>
+{% for c, d in debts %}
+<section class="card">
+    <h2>{{ c }}</h2>
+    {% for uid, v in d.net %}
+        <div class="row"><span>{{ members[uid].name ?? 'бывший участник' }}</span>
+            <b class="{{ v > 0 ? 'income' : (v < 0 ? 'expense') }}">{{ v > 0 ? 'получит ' : (v < 0 ? 'отдаст ' : 'в расчёте') }}{{ v != 0 ? (v|abs)|money(c) }}</b></div>
+    {% endfor %}
+    {% if d.plan %}
+        <h3>Как рассчитаться</h3>
+        {% for p in d.plan %}
+            <form method="post" class="row">
+                <span>{{ members[p.from].name ?? '?' }} → {{ members[p.to].name ?? '?' }}: <b>{{ p.amount|money(c) }}</b></span>
+                <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
+                <input type="hidden" name="from" value="{{ p.from }}"><input type="hidden" name="to" value="{{ p.to }}">
+                <input type="hidden" name="currency" value="{{ c }}"><input type="hidden" name="amount" value="{{ p.amount|money_input(c) }}">
+                <button class="btn small primary" data-confirm="Отметить, что долг возвращён?">Рассчитались</button>
+            </form>
+        {% endfor %}
+    {% else %}
+        <p class="muted">Все в расчёте 🎉</p>
+    {% endif %}
+</section>
+{% else %}
+<section class="card"><p class="muted">Пока нет разделённых трат. При вводе расхода в группе отметьте «👥 Разделить».</p></section>
+{% endfor %}
+
+<form method="post" class="card stack">
+    <h2>Записать возврат долга</h2>
+    <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
+    <label>Кто отдал <select name="from">{% for id, u in members %}<option value="{{ id }}" {{ u == app.user ? 'selected' }}>{{ u.name }}</option>{% endfor %}</select></label>
+    <label>Кому <select name="to">{% for id, u in members %}<option value="{{ id }}">{{ u.name }}</option>{% endfor %}</select></label>
+    <input name="amount" inputmode="decimal" placeholder="Сумма" required>
+    {% include '_currency_select.html.twig' with {value: scope.currency} %}
+    <button class="btn primary small">Записать</button>
+</form>
+
+{% if settlements %}
+<section class="card">
+    <h2>История возвратов</h2>
+    {% for st in settlements %}
+        <form method="post" class="row">
+            <span>{{ st.date|date('d.m.Y') }} · {{ st.from.name }} → {{ st.to.name }}</span>
+            <b>{{ st.amount|money(st.currency) }}</b>
+            <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
+            <button class="btn small" name="delete" value="{{ st.id }}" data-confirm="Удалить запись?">✕</button>
+        </form>
+    {% endfor %}
+</section>
+{% endif %}
+{% endblock %}

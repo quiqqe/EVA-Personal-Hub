@@ -1,0 +1,42 @@
+{% extends 'base.html.twig' %}
+{% block body %}
+<div class="hub-hello">
+    <h1>Привет, {{ app.user.name }} 👋</h1>
+    <p class="muted">Все ваши инструменты — в одном месте.</p>
+</div>
+
+<div class="tiles">
+    <a class="tile featured" href="{{ path('money', {scope: 'me'}) }}">
+        <span class="tile-icon">💰</span>
+        <small>Деньги · всего на счетах</small>
+        {% if accounts %}
+            <span class="big">{{ total|money(app.user.currency, true) }}</span>
+            <small class="tile-sub">Счета, обмен валют и крипты, бюджеты, цели, долги</small>
+        {% else %}
+            <span class="big">Начать учёт</span>
+            <small class="tile-sub">Добавьте наличные, карту или крипто-кошелёк</small>
+        {% endif %}
+    </a>
+    {% for g in groups %}
+        <a class="tile" href="{{ path('money', {scope: g.id}) }}">
+            <span class="tile-icon">👥</span>
+            <b>{{ g.name }}</b>
+            <small>Общие деньги · {{ g.memberships|length }} чел.</small>
+        </a>
+    {% endfor %}
+    <a class="tile" href="{{ path('groups') }}">
+        <span class="tile-icon">👨‍👩‍👧</span>
+        <b>Группы</b>
+        <small>Семья, друзья, приглашения</small>
+    </a>
+    <a class="tile" href="{{ path('profile') }}">
+        <span class="tile-icon">⚙️</span>
+        <b>Профиль</b>
+        <small>Имя, валюта, пароль, тема</small>
+    </a>
+    <div class="tile soon">
+        <span class="tile-icon">✨</span>
+        <small>Здесь появятся новые инструменты</small>
+    </div>
+</div>
+{% endblock %}

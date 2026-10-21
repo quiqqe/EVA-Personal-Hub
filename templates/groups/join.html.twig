@@ -1,0 +1,13 @@
+{% extends 'base.html.twig' %}
+{% block body %}
+<div class="card narrow center">
+{% if group %}
+    <h1>Вступить в «{{ group.name }}»?</h1>
+    <p class="muted">Участники: {{ group.members|map(u => u.name)|join(', ') }}</p>
+    <form method="post"><input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn primary wide">Вступить</button></form>
+{% else %}
+    <h1>Ссылка недействительна</h1>
+    <p class="muted">Попросите владельца группы прислать новую.</p>
+{% endif %}
+</div>
+{% endblock %}

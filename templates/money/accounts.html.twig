@@ -1,0 +1,15 @@
+{% extends 'money/layout.html.twig' %}
+{% block body %}
+<div class="card-head"><h1>Счета</h1><a class="btn primary small" href="{{ path('money_account_new', {scope: scope.key}) }}">＋ Счёт</a></div>
+<section class="card list">
+{% for a in accounts %}
+    <a class="row {{ a.archived ? 'archived' }}" href="{{ path('money_account_edit', {scope: scope.key, id: a.id}) }}">
+        <span><span class="acc-icon">{{ a.icon }}</span>{{ a.name }} {% if a.archived %}<span class="badge">архив</span>{% endif %}<br><small class="muted">{{ constant('App\\Money\\Entity\\Account::TYPES')[a.type]|split(' ', 2)|last }} · {{ a.currency }}</small></span>
+        <b class="{{ balances[a.id.toRfc4122] < 0 ? 'expense' }}">{{ balances[a.id.toRfc4122]|money(a.currency) }}</b>
+    </a>
+{% else %}
+    <p class="muted">Счетов пока нет</p>
+{% endfor %}
+</section>
+<p class="tip">💡 <span>Долги вне группы: заведите счёт типа «Долги» на человека. Дали в долг — перевод на этот счёт, вернули — перевод обратно. Плюс на счёте — вам должны.</span></p>
+{% endblock %}

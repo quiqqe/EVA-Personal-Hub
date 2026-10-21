@@ -1,0 +1,28 @@
+{% extends 'money/layout.html.twig' %}
+{% block body %}
+<h1>{{ isNew ? 'Новый счёт' : account.name }}</h1>
+<form method="post" class="card">
+    {% if error %}<div class="flash flash-error">{{ error }}</div>{% endif %}
+    <label>Название <input name="name" value="{{ account.name }}" required maxlength="100" placeholder="Кошелёк, Тинькофф, Копилка…" {{ isNew ? 'autofocus' }}></label>
+    <label>Тип
+        <select name="type">{% for k, v in constant('App\\Money\\Entity\\Account::TYPES') %}<option value="{{ k }}" {{ k == account.type ? 'selected' }}>{{ v }}</option>{% endfor %}</select>
+    </label>
+    <label>Валюта {% if locked %}<small class="muted">— нельзя менять, есть операции</small>{% endif %}
+        {% include '_currency_select.html.twig' with {value: account.currency, disabled: locked} %}
+    </label>
+    <label>Начальный остаток <input name="initial" inputmode="decimal" value="{{ account.initialBalance|money_input(account.currency) }}" placeholder="0"></label>
+    <small class="muted">Сколько было на счёте до начала учёта. Для кредитки или долга «я должен» — с минусом.</small>
+    <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
+    <button class="btn primary wide">Сохранить</button>
+</form>
+{% if not isNew %}
+<div class="actions">
+    <form method="post" action="{{ path('money_account_archive', {scope: scope.key, id: account.id}) }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn">{{ account.archived ? 'Вернуть из архива' : 'В архив' }}</button>
+    </form>
+    <form method="post" action="{{ path('money_account_delete', {scope: scope.key, id: account.id}) }}" data-confirm="Удалить счёт?">
+        <input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn danger">Удалить</button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

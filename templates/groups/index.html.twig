@@ -1,0 +1,20 @@
+{% extends 'base.html.twig' %}
+{% block title %}Группы — EVA{% endblock %}
+{% block body %}
+<h1>Группы</h1>
+<p class="muted">Семья, друзья, соседи — общие счета, деление трат и долги.</p>
+<div class="list card">
+    {% for g in groups %}
+        <a class="row" href="{{ path('group', {id: g.id}) }}"><span>👥 {{ g.name }}</span><span class="muted">{{ g.memberships|length }} чел. · {{ g.currency }}</span></a>
+    {% else %}
+        <p class="muted">Пока нет групп</p>
+    {% endfor %}
+</div>
+<form method="post" class="card">
+    <h2>Новая группа</h2>
+    <label>Название <input name="name" required maxlength="100" placeholder="Семья"></label>
+    <label>Валюта группы {% include '_currency_select.html.twig' with {value: app.user.currency} %}</label>
+    <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
+    <button class="btn primary">Создать</button>
+</form>
+{% endblock %}

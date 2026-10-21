@@ -1,0 +1,27 @@
+{% extends 'base.html.twig' %}
+{% block title %}Профиль — EVA{% endblock %}
+{% block body %}
+<h1>Профиль</h1>
+<form method="post" class="card">
+    <label>Имя <input name="name" value="{{ app.user.name }}" required maxlength="100"></label>
+    <label>Email <input value="{{ app.user.email }}" disabled></label>
+    <label>Основная валюта (итоги в «Личном») {% include '_currency_select.html.twig' with {value: app.user.currency} %}</label>
+    <details>
+        <summary>Сменить пароль</summary>
+        <label>Текущий пароль <input type="password" name="password" autocomplete="current-password"></label>
+        <label>Новый пароль <input type="password" name="new_password" minlength="8" autocomplete="new-password"></label>
+    </details>
+    <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
+    <button class="btn primary">Сохранить</button>
+</form>
+<section class="card">
+    <h2>Тема оформления</h2>
+    <div class="seg" role="radiogroup" aria-label="Тема">
+        <label><input type="radio" name="theme_choice" value=""><span>◐ Системная</span></label>
+        <label><input type="radio" name="theme_choice" value="light"><span>☀ Светлая</span></label>
+        <label><input type="radio" name="theme_choice" value="dark"><span>☾ Тёмная</span></label>
+    </div>
+    <small class="muted">Запоминается в этом браузере.</small>
+</section>
+<a href="{{ path('logout') }}" class="btn">Выйти</a>
+{% endblock %}

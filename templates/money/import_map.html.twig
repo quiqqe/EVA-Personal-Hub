@@ -1,0 +1,27 @@
+{% extends 'money/layout.html.twig' %}
+{% block body %}
+<h1>Проверьте колонки</h1>
+<form method="post" class="card stack">
+    <label>Счёт <select name="account" data-autosubmit-field>{% for a in accounts %}<option value="{{ a.id }}" {{ account == a ? 'selected' }}>{{ a.name }} · {{ a.currency }}</option>{% endfor %}</select></label>
+    {% for key, label in {date: 'Дата', amount: 'Сумма', note: 'Описание', category: 'Категория банка'} %}
+        <label>{{ label }}
+            <select name="{{ key }}" data-autosubmit-field>
+                <option value="">—</option>
+                {% for i, h in header %}<option value="{{ i }}" {{ cols[key] is same as(i) ? 'selected' }}>{{ h }}</option>{% endfor %}
+            </select>
+        </label>
+    {% endfor %}
+    <label class="check"><input type="checkbox" name="invert" value="1" {{ invert ? 'checked' }} data-autosubmit-field> Инвертировать знак (расходы в выписке без минуса)</label>
+    <button class="btn" name="preview" value="1">Обновить предпросмотр</button>
+
+    <h2>Будет импортировано: {{ parsed|length }}{% if skipped %} <small class="muted">(пропущено строк без даты/суммы: {{ skipped }})</small>{% endif %}</h2>
+    {% for o in parsed|slice(0, 10) %}{% include 'money/_op.html.twig' %}{% endfor %}
+    {% if parsed|length > 10 %}<p class="muted">…и ещё {{ parsed|length - 10 }}</p>{% endif %}
+
+    <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
+    {% if parsed %}<button class="btn primary wide" name="confirm" value="1">Импортировать {{ parsed|length }}</button>{% endif %}
+</form>
+<details class="card"><summary>Исходные строки</summary>
+    <div class="scroll"><table>{% for r in [header]|merge(sample) %}<tr>{% for c in r %}<td>{{ c }}</td>{% endfor %}</tr>{% endfor %}</table></div>
+</details>
+{% endblock %}

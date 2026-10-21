@@ -1,0 +1,53 @@
+{% extends 'money/layout.html.twig' %}
+{% set cur = in %}
+{% block body %}
+<div class="month-nav">
+    <a href="{{ path('money_reports', {scope: scope.key, m: month.modify('-1 month').format('Y-m')}) }}">‹</a>
+    <b>{{ month|date('m.Y') }}</b>
+    <a href="{{ path('money_reports', {scope: scope.key, m: month.modify('+1 month').format('Y-m')}) }}">›</a>
+</div>
+<section class="hero">
+    <div class="hero-head"><small>Итоги</small>{% include 'money/_in_switch.html.twig' %}</div>
+    <div class="month">
+        <span>Доходы <b class="income">+{{ income.total|money(cur, true) }}</b></span>
+        <span>Расходы <b class="expense">−{{ expense.total|money(cur, true) }}</b></span>
+    </div>
+    {% set diff = income.total - expense.total %}
+    <small class="sub">Итог месяца: <b>{{ diff|money(cur, true) }}</b></small>
+    {% set missing = expense.missing|merge(income.missing) %}
+    {% if missing %}<small class="muted">без учёта {{ missing|join(', ') }} — нет курса</small>{% endif %}
+</section>
+
+{% for title, data in {'Расходы по категориям': expense, 'Доходы по категориям': income} %}
+<section class="card">
+    <h2>{{ title }}</h2>
+    {% for row in data.rows %}
+        <a class="progress" href="{{ path('money_operations', {scope: scope.key, m: month.format('Y-m'), category: row.category.id ?? ''}) }}">
+            <div class="row"><span>{{ row.category ? row.category.label : 'Без категории' }}</span><span>{{ row.amount|money(cur, true) }} <small class="muted">{{ (row.amount / max(1, data.total) * 100)|round }}%</small></span></div>
+            {% include 'money/_bar.html.twig' with {value: row.amount, max: data.rows[0].amount, plain: true} %}
+        </a>
+    {% else %}
+        <p class="muted">Нет операций</p>
+    {% endfor %}
+</section>
+{% endfor %}
+
+<section class="card">
+    <h2>12 месяцев</h2>
+    <div class="chart" role="img" aria-label="Доходы и расходы по месяцам">
+        {% for m, v in monthly %}
+            <a class="chart-col" href="{{ path('money_reports', {scope: scope.key, m: m}) }}" title="{{ m }}: +{{ v.income|money(cur, true) }} / −{{ v.expense|money(cur, true) }}">
+                <span class="bars"><i class="inc" style="height: {{ (v.income / peak * 100)|round }}%"></i><i class="exp" style="height: {{ (v.expense / peak * 100)|round }}%"></i></span>
+                <small>{{ m|slice(5, 2) }}</small>
+            </a>
+        {% endfor %}
+    </div>
+    <div class="legend"><span><i class="inc"></i>Доходы</span><span><i class="exp"></i>Расходы</span></div>
+    <div class="scroll"><table class="table">
+        <tr><th>Месяц</th><th>Доходы</th><th>Расходы</th><th>Итог</th></tr>
+        {% for m, v in monthly|reverse %}
+            <tr><td>{{ m|slice(5, 2) }}.{{ m|slice(0, 4) }}</td><td class="income">{{ v.income ? v.income|money(cur, true) : '—' }}</td><td class="expense">{{ v.expense ? v.expense|money(cur, true) : '—' }}</td><td>{{ v.income or v.expense ? (v.income - v.expense)|money(cur, true) : '—' }}</td></tr>
+        {% endfor %}
+    </table></div>
+</section>
+{% endblock %}

@@ -1,0 +1,46 @@
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${HTTP_PORT:-8080}:80"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./public:/app/public:ro
+    depends_on:
+      - app
+
+  app:
+    build:
+      context: .
+      target: ${APP_TARGET:-prod}
+    restart: unless-stopped
+    env_file:
+      - path: .env.local
+        required: false
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-eva}:${POSTGRES_PASSWORD:-eva}@postgres:5432/${POSTGRES_DB:-eva}?serverVersion=16&charset=utf8
+    volumes:
+      - sessions:/app/var/sessions
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-eva}
+      POSTGRES_USER: ${POSTGRES_USER:-eva}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eva}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "${POSTGRES_DB:-eva}", "-U", "${POSTGRES_USER:-eva}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+  sessions:

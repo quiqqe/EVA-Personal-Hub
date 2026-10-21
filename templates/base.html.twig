@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#f5f6f8" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0c0e13" media="(prefers-color-scheme: dark)">
+    <title>{% block title %}EVA Personal{% endblock %}</title>
+    {# before CSS: apply the saved theme so the page never flashes the wrong one #}
+    <script>try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+    <link rel="preload" href="/fonts/inter-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/manrope-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="manifest" href="{{ path('manifest') }}">
+    <link rel="icon" href="/icon.svg">
+    <link rel="apple-touch-icon" href="/icon.svg">
+    <link rel="stylesheet" href="/app.css?v=4">
+    <script src="/app.js?v=4" defer></script>
+</head>
+<body class="{% block body_class %}{% endblock %}">
+{% block header %}
+    <header class="top">
+        <div class="top-inner">
+            <a href="{{ path('hub') }}" class="brand" aria-label="EVA — все инструменты"><span class="brand-mark">E</span><span class="brand-name">EVA</span></a>
+            {% block header_center %}{% endblock %}
+            <div class="top-actions">
+                <button type="button" class="icon-btn" data-theme-toggle aria-label="Тема оформления" title="Тема: системная">◐</button>
+                {% if app.user %}<a href="{{ path('profile') }}" class="avatar" title="{{ app.user.name }}">{{ app.user.name|first|upper }}</a>{% endif %}
+            </div>
+        </div>
+    </header>
+{% endblock %}
+<main class="page">
+    {% for type, messages in app.flashes %}
+        {% for m in messages %}<div class="flash flash-{{ type }}" role="status">{{ m }}</div>{% endfor %}
+    {% endfor %}
+    {% block body %}{% endblock %}
+</main>
+{% block nav %}{% endblock %}
+</body>
+</html>

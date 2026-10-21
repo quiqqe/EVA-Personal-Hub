@@ -1,0 +1,103 @@
+{% extends 'money/layout.html.twig' %}
+{# shared by operations and recurring templates (recurring = true) #}
+{% set recurring = recurring|default(false) %}
+{% if not recurring %}
+    {% set split = post.split is defined or (not post and o.splits|length > 0) %}
+    {% set participants = post.participants ?? (o.splits|length ? o.splits|map(s => s.user.id.toRfc4122) : members|keys) %}
+    {% set payer = post.paid_by ?? (o.paidBy ? o.paidBy.id.toRfc4122 : app.user.id.toRfc4122) %}
+{% endif %}
+{% block body %}
+<h1>{{ recurring ? (isNew ? 'Регулярная операция' : 'Изменить регулярную') : (isNew ? 'Новая операция' : 'Операция') }}</h1>
+<form method="post" class="card op-form" data-op-form>
+    {% for e in errors %}<div class="flash flash-error">{{ e }}</div>{% endfor %}
+    <div class="seg">
+        {% for k, v in constant('App\\Money\\Entity\\Operation::TYPES') %}
+            <label><input type="radio" name="type" value="{{ k }}" {{ (post.type ?? o.type) == k ? 'checked' }}><span>{{ v }}</span></label>
+        {% endfor %}
+    </div>
+
+    <label class="amount">Сумма
+        <input name="amount" inputmode="decimal" autocomplete="off" required value="{{ post.amount ?? (o.amount ? o.amount|money_input(recurring ? o.account.currency : o.currency) : '') }}" placeholder="0" {{ isNew ? 'autofocus' }}>
+        <small class="muted">Можно считать: 250+120</small>
+    </label>
+
+    {% if scope.group and not recurring %}
+    <div data-show="expense">
+        <label class="check"><input type="checkbox" name="split" value="1" {{ split ? 'checked' }} data-split> 👥 Разделить между участниками</label>
+        <div data-split-box class="split-box">
+            <label>Кто платил
+                <select name="paid_by" data-payer data-me="{{ app.user.id }}">{% for id, u in members %}<option value="{{ id }}" {{ payer == id ? 'selected' }}>{{ u.name }}{{ u == app.user ? ' (я)' }}</option>{% endfor %}</select>
+            </label>
+            <div class="chips">Делить между:
+                {% for id, u in members %}<label><input type="checkbox" name="participants[]" value="{{ id }}" {{ id in participants ? 'checked' }}><span>{{ u.name }}</span></label>{% endfor %}
+            </div>
+            <label data-other-currency>Валюта {% include '_currency_select.html.twig' with {value: post.currency ?? o.currency ?? scope.currency} %}</label>
+        </div>
+    </div>
+    {% endif %}
+
+    <label data-account>Счёт
+        <select name="account" data-currency-source>
+            {% set current = post.account ?? (o.account ? o.account.id.toRfc4122 : '') %}
+            {% if o.account and o.account not in sources %}<option value="{{ o.account.id }}" data-cur="{{ o.account.currency }}" selected>{{ o.account.label }}</option>{% endif %}
+            {% for a in sources %}<option value="{{ a.id }}" data-cur="{{ a.currency }}" {{ current == a.id.toRfc4122 ? 'selected' }}>{{ a.icon }} {{ scope.group ? a.label : a.name }} · {{ a.currency }}</option>{% endfor %}
+        </select>
+        {% if not sources %}<a href="{{ path('money_account_new', {scope: scope.key}) }}">Сначала добавьте счёт</a>{% endif %}
+    </label>
+
+    <div data-show="transfer">
+        <label>Куда
+            <select name="to_account" data-currency-target>
+                {% set to = post.to_account ?? (o.toAccount ? o.toAccount.id.toRfc4122 : '') %}
+                <option value="">—</option>
+                {% for a in targets %}<option value="{{ a.id }}" data-cur="{{ a.currency }}" {{ to == a.id.toRfc4122 ? 'selected' }}>{{ a.icon }} {{ a.label }} · {{ a.currency }}</option>{% endfor %}
+            </select>
+        </label>
+        <div data-to-amount class="fx">
+            <label>Получено <small class="muted" data-to-cur></small>
+                <input name="to_amount" inputmode="decimal" data-fx-to value="{{ post.to_amount ?? (o.toAmount and o.toAccount ? o.toAmount|money_input(o.toAccount.currency) : '') }}">
+            </label>
+            <label>Курс <small class="muted" data-rate-label>за 1</small>
+                <input name="rate" inputmode="decimal" data-fx-rate value="{{ post.rate ?? '' }}" placeholder="как в обменнике">
+            </label>
+            <small class="muted fx-hint">Обмен валют (в т. ч. крипты в обменнике) — это перевод между счетами в разных валютах. Укажите полученную сумму или курс — второе посчитается.</small>
+        </div>
+    </div>
+
+    <label data-category>Категория
+        {% set cat = post.category ?? (o.category ? o.category.id.toRfc4122 : '') %}
+        <select name="category">
+            <option value="">Без категории</option>
+            {% for kind, label in {expense: 'Расходы', income: 'Доходы'} %}
+            <optgroup label="{{ label }}" data-kind="{{ kind }}">
+                {% for c in categories[kind] %}<option value="{{ c.id }}" {{ cat == c.id.toRfc4122 ? 'selected' }}>{{ c.label }}</option>{% endfor %}
+            </optgroup>
+            {% endfor %}
+        </select>
+    </label>
+
+    {% if recurring %}
+    <label>Повторять
+        <select name="period">{% for k, v in periods %}<option value="{{ k }}" {{ (post.period ?? o.period) == k ? 'selected' }}>{{ v }}</option>{% endfor %}</select>
+    </label>
+    <label>Первый платёж <input type="date" name="date" value="{{ post.date ?? o.startDate.format('Y-m-d') }}" required></label>
+    {% else %}
+    <label>Дата
+        <input type="date" name="date" value="{{ post.date ?? o.date.format('Y-m-d') }}" required>
+    </label>
+    {% endif %}
+
+    <label>Комментарий <input name="note" maxlength="255" value="{{ post.note ?? o.note }}" placeholder="Необязательно"></label>
+
+    <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
+    <div class="actions">
+        <button class="btn primary">Сохранить</button>
+        {% if isNew and not recurring %}<button class="btn" name="more" value="1">Сохранить и ещё</button>{% endif %}
+    </div>
+</form>
+{% if not isNew and not recurring %}
+<form method="post" action="{{ path('money_operation_delete', {scope: scope.key, id: o.id}) }}" data-confirm="Удалить операцию?">
+    <input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn danger">Удалить</button>
+</form>
+{% endif %}
+{% endblock %}

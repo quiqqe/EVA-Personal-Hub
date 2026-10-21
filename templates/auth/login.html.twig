@@ -1,0 +1,16 @@
+{% extends 'base.html.twig' %}
+{% block title %}Вход — EVA{% endblock %}
+{% block header %}{% endblock %}
+{% block body %}
+<form method="post" class="card narrow auth">
+    <div class="brand-mark">E</div>
+    <h1>EVA Personal</h1>
+    <p class="lead">Личные инструменты: деньги, группы и не только</p>
+    {% if error %}<div class="flash flash-error">Неверный email или пароль</div>{% endif %}
+    <label>Email <input type="email" name="email" value="{{ email }}" required autofocus autocomplete="email"></label>
+    <label>Пароль <input type="password" name="password" required autocomplete="current-password"></label>
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+    <button class="btn primary wide">Войти</button>
+    <p class="muted center">Нет аккаунта? <a href="{{ path('register') }}">Регистрация</a></p>
+</form>
+{% endblock %}

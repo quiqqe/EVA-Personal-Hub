@@ -1,0 +1,55 @@
+{% extends 'base.html.twig' %}
+{% block title %}{{ group.name }} — EVA{% endblock %}
+{% block body %}
+<h1>👥 {{ group.name }}</h1>
+<a class="btn primary" href="{{ path('money', {scope: group.id}) }}">💰 Деньги группы</a>
+
+<section class="card">
+    <h2>Участники</h2>
+    <div class="list">
+    {% for m in group.memberships %}
+        <div class="row">
+            <span>{{ m.user.name }} {% if m.isOwner %}<span class="badge">владелец</span>{% endif %}{% if m.user == app.user %} <span class="muted">(вы)</span>{% endif %}</span>
+            {% if mine.isOwner and m != mine %}
+                <form method="post" action="{{ path('group_remove', {id: group.id, member: m.id}) }}" data-confirm="Удалить {{ m.user.name }} из группы?">
+                    <input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn small danger">Удалить</button>
+                </form>
+            {% endif %}
+        </div>
+    {% endfor %}
+    </div>
+</section>
+
+{% if mine.isOwner %}
+<section class="card">
+    <h2>Пригласить</h2>
+    <p class="muted">Отправьте ссылку — по ней можно вступить в группу.</p>
+    <div class="copy">
+        <input readonly value="{{ url('join', {token: group.inviteToken}) }}" id="invite">
+        <button type="button" class="btn" data-copy="#invite">Копировать</button>
+    </div>
+    <form method="post" action="{{ path('group_invite', {id: group.id}) }}" data-confirm="Старая ссылка перестанет работать. Продолжить?">
+        <input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn small">Новая ссылка</button>
+    </form>
+</section>
+
+<form method="post" class="card">
+    <h2>Настройки</h2>
+    <label>Название <input name="name" value="{{ group.name }}" required maxlength="100"></label>
+    <label>Валюта группы (итоги и бюджеты) {% include '_currency_select.html.twig' with {value: group.currency} %}</label>
+    <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
+    <button class="btn primary">Сохранить</button>
+</form>
+{% endif %}
+
+<div class="actions">
+    <form method="post" action="{{ path('group_remove', {id: group.id, member: mine.id}) }}" data-confirm="Выйти из группы «{{ group.name }}»?">
+        <input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn danger">Выйти из группы</button>
+    </form>
+    {% if mine.isOwner %}
+    <form method="post" action="{{ path('group_delete', {id: group.id}) }}" data-confirm="Удалить группу насовсем?">
+        <input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn danger">Удалить группу</button>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}
