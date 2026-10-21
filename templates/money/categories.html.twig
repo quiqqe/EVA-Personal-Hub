@@ -13,6 +13,25 @@
             <button class="btn small" aria-label="Сохранить" title="Сохранить">💾</button>
             <button class="btn small" name="archive" value="1" title="{{ c.archived ? 'Вернуть' : 'В архив' }}" aria-label="{{ c.archived ? 'Вернуть из архива' : 'В архив' }}">{{ c.archived ? '↩︎' : '🗄' }}</button>
         </form>
+        {% set others = categories|filter(o => o.kind == kind and o.id != c.id) %}
+        <details class="cat-more">
+            <summary>{{ uses[c.id.toRfc4122] ? uses[c.id.toRfc4122] ~ ' в операциях' : 'не используется' }} · ещё</summary>
+            {% if others %}
+            <form method="post" class="cat-merge" data-confirm="Перенести все операции из «{{ c.name }}» в выбранную категорию? «{{ c.name }}» исчезнет.">
+                <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
+                <input type="hidden" name="id" value="{{ c.id }}">
+                <select name="into" required aria-label="Объединить с"><option value="">Объединить с…</option>{% for o in others %}<option value="{{ o.id }}">{{ o.label }}</option>{% endfor %}</select>
+                <button class="btn small" name="merge" value="1">Объединить</button>
+            </form>
+            {% endif %}
+            {% if not uses[c.id.toRfc4122] %}
+            <form method="post" data-confirm="Удалить категорию «{{ c.name }}»?">
+                <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
+                <input type="hidden" name="id" value="{{ c.id }}">
+                <button class="btn small danger" name="delete" value="1">Удалить</button>
+            </form>
+            {% endif %}
+        </details>
     {% endfor %}
     <form method="post" class="cat-row">
         <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
@@ -23,5 +42,5 @@
     </form>
 </section>
 {% endfor %}
-<p class="muted small">Архивные категории не предлагаются при вводе, но остаются в старых операциях и отчётах.</p>
+<p class="muted small">Архивные категории не предлагаются при вводе, но остаются в старых операциях и отчётах. Две категории про одно и то же («Еда» и «Продукты») — «ещё» → «Объединить»: все операции, повторы и бюджет перейдут в выбранную.</p>
 {% endblock %}
