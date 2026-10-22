@@ -12,6 +12,7 @@
 {% endif %}
 {% block body %}
 <h1>{{ recurring ? (isNew ? 'Регулярная операция' : 'Изменить регулярную') : (isNew ? 'Новая операция' : 'Операция') }}</h1>
+{% if not isNew and not recurring %}{% include 'money/_fx_loss.html.twig' %}{% endif %}
 {% if not sources and not o.account %}
 <section class="card">
     <h2>Сначала нужен счёт</h2>

@@ -1,0 +1,13 @@
+{# an exchange or a sum in another currency: how the rate actually used compares with the market rate of that day #}
+{% set fx = null %}
+{% if o.id is defined and o.toAccount and o.toAmount and o.toAccount.currency != o.currency %}
+    {% set market = convert(o.amount, o.currency, o.toAccount.currency, o.date) %}
+    {% if market %}{% set fx = {cur: o.toAccount.currency, loss: market - o.toAmount, base: market} %}{% endif %}
+{% elseif o.id is defined and o.origCurrency and o.type != 'transfer' %}
+    {% set market = convert(o.origAmount, o.origCurrency, o.currency, o.date) %}
+    {% if market %}{% set fx = {cur: o.currency, loss: o.type == 'expense' ? o.amount - market : market - o.amount, base: market} %}{% endif %}
+{% endif %}
+{% if fx and fx.base > 0 and (fx.loss / fx.base)|abs >= 0.001 %}
+    {% set pct = (fx.loss / fx.base * 100)|abs|round(1) %}
+    <p class="hint">💱 {% if fx.loss > 0 %}Курс хуже рыночного на {{ pct }}% — потеря {{ fx.loss|money(fx.cur, true) }}{% else %}Курс лучше рыночного на {{ pct }}% — выгода {{ (-fx.loss)|money(fx.cur, true) }}{% endif %} по сравнению с курсом на {{ o.date|date('d.m.Y') }}.</p>
+{% endif %}

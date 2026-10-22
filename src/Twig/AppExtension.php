@@ -72,11 +72,11 @@ final class AppExtension
         return ['owed' => $owed, 'paid' => $paid, 'currency' => $o->origCurrency ?? $o->currency];
     }
 
-    /** Today's conversion for display (null when there is no rate) */
+    /** Conversion for display at today's rate, or at a given day's (null when there is no rate) */
     #[AsTwigFunction('convert')]
-    public function convert(int $minor, string $from, string $to): ?int
+    public function convert(int $minor, string $from, string $to, ?\DateTimeInterface $on = null): ?int
     {
-        return $this->rates->convert($minor, $from, $to);
+        return $this->rates->convert($minor, $from, $to, $on ? \DateTimeImmutable::createFromInterface($on) : null);
     }
 
     #[AsTwigFilter('money_input')]
