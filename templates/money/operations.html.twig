@@ -66,6 +66,7 @@
     {% if sum.expense %}<b class="expense">−{{ sum.expense|money(in, true) }}</b>{% endif %}
     {% if sum.missing %}<small class="muted">без учёта {{ sum.missing|join(', ') }}</small>{% endif %}
     <button type="button" class="btn small" data-bulk-toggle>Выбрать</button>
+    {% if not q %}<a class="btn small" href="{{ path('money_export', base|merge(range ? {from: range[0].format('Y-m-d'), to: range[1].format('Y-m-d')} : {from: month.format('Y-m-d'), to: month.modify('last day of this month').format('Y-m-d')})) }}" title="Скачать эти операции в CSV">📤 CSV</a>{% endif %}
 </div>
 <form id="bulk" method="post" action="{{ path('money_operations_bulk', {scope: scope.key}) }}" class="bulk-bar" hidden>
     <input type="hidden" name="_token" value="{{ csrf_token('form') }}">

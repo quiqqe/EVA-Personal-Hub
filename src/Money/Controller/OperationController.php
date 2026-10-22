@@ -54,11 +54,10 @@ final class OperationController extends BaseController
             $qb->andWhere('o.date >= :from AND o.date < :to')
                 ->setParameter('from', $range[0] ?? $month, 'date_immutable')->setParameter('to', $range ? $range[1]->modify('+1 day') : $month->modify('+1 month'), 'date_immutable');
         }
-        $filters = ['account' => (string) $r->query->get('account'), 'category' => (string) $r->query->get('category'), 'type' => (string) $r->query->get('type')];
+        $filters = self::filter($r, $qb);
         // viewing one account: show its card (balance, opening balance, edit) above the list
         $account = null;
         if (Uuid::isValid($filters['account'])) {
-            $qb->andWhere('a.id = :acc OR ta.id = :acc')->setParameter('acc', $filters['account']);
             $candidates = $this->ledger->accounts($scope, archived: true);
             if ($scope->group) {
                 $candidates = [...$candidates, ...$this->ledger->commonAccounts($scope->group)];
@@ -68,14 +67,6 @@ final class OperationController extends BaseController
                     $account = $a;
                 }
             }
-        }
-        if (Uuid::isValid($filters['category'])) {
-            $qb->andWhere('o.category = :cat')->setParameter('cat', $filters['category']);
-        } elseif ($filters['category'] === 'none') {
-            $qb->andWhere('o.category IS NULL AND o.type != :tr')->setParameter('tr', 'transfer');
-        }
-        if (\array_key_exists($filters['type'], Operation::TYPES)) {
-            $qb->andWhere('o.type = :type')->setParameter('type', $filters['type']);
         }
         // totals of what's listed, in the space's display currency, each at its own day's rate
         $in = DashboardController::displayCurrency($r, $scope);
@@ -238,10 +229,18 @@ final class OperationController extends BaseController
         return $this->redirect(AccountController::localPath((string) $r->request->get('back')) ?? $this->generateUrl('money_operations', ['scope' => $scope->key()]));
     }
 
+    /** Everything in the space, or just what the list shows: ?account= &category= &type= &from= &to= (inclusive). */
     #[Route('/export.csv', name: 'money_export')]
-    public function export(Scope $scope): StreamedResponse
+    public function export(Request $r, Scope $scope): StreamedResponse
     {
-        $ops = $this->ledger->operations($scope)->orderBy('o.date')->getQuery()->toIterable();
+        $qb = $this->ledger->operations($scope)->orderBy('o.date');
+        self::filter($r, $qb);
+        $from = Dates::parse((string) $r->query->get('from'));
+        $to = Dates::parse((string) $r->query->get('to'));
+        if ($from && $to) {
+            $qb->andWhere('o.date >= :from AND o.date <= :to')->setParameter('from', $from, 'date_immutable')->setParameter('to', $to, 'date_immutable');
+        }
+        $ops = $qb->getQuery()->toIterable();
         $response = new StreamedResponse(function () use ($ops, $scope): void {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
@@ -271,6 +270,25 @@ final class OperationController extends BaseController
         $response->headers->set('Content-Disposition', 'attachment; filename="operations-'.date('Y-m-d').'.csv"');
 
         return $response;
+    }
+
+    /** The list's account / category / type filters, shared by the list and its export. */
+    private static function filter(Request $r, \Doctrine\ORM\QueryBuilder $qb): array
+    {
+        $f = ['account' => (string) $r->query->get('account'), 'category' => (string) $r->query->get('category'), 'type' => (string) $r->query->get('type')];
+        if (Uuid::isValid($f['account'])) {
+            $qb->andWhere('a.id = :acc OR ta.id = :acc')->setParameter('acc', $f['account']);
+        }
+        if (Uuid::isValid($f['category'])) {
+            $qb->andWhere('o.category = :cat')->setParameter('cat', $f['category']);
+        } elseif ($f['category'] === 'none') {
+            $qb->andWhere('o.category IS NULL AND o.type != :tr')->setParameter('tr', 'transfer');
+        }
+        if (\array_key_exists($f['type'], Operation::TYPES)) {
+            $qb->andWhere('o.type = :type')->setParameter('type', $f['type']);
+        }
+
+        return $f;
     }
 
     /** The page the form was opened from (never another operation form), to return to after saving. */
