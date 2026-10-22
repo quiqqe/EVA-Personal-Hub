@@ -191,6 +191,53 @@ final class OperationController extends BaseController
         return $this->redirectToRoute('money_operations', ['scope' => $scope->key(), 'm' => $o->date->format('Y-m')]);
     }
 
+    /** Several operations at once: give them one category, or delete them. Only what I may edit is touched. */
+    #[Route('/bulk', name: 'money_operations_bulk', methods: ['POST'])]
+    public function bulk(Request $r, Scope $scope): Response
+    {
+        $this->checkCsrf($r);
+        $ops = [];
+        foreach (array_slice(array_map('strval', $r->request->all('ids')), 0, 500) as $id) {
+            $o = Uuid::isValid($id) ? $this->em->find(Operation::class, $id) : null;
+            if ($o && $this->ledger->visible($scope, $o) && $this->ledger->canEdit($scope, $o)) {
+                $ops[] = $o;
+            }
+        }
+        $done = 0;
+        if ($r->request->has('delete')) {
+            foreach ($ops as $o) {
+                $this->em->remove($o);
+                ++$done;
+            }
+            $msg = 'Удалено операций: '.$done;
+        } else {
+            $category = null;
+            foreach ($this->ledger->categories($scope) as $c) {
+                if ((string) $c->id === (string) $r->request->get('category')) {
+                    $category = $c;
+                }
+            }
+            if (!$category) {
+                $this->addFlash('error', 'Выберите категорию');
+
+                return $this->redirect(AccountController::localPath((string) $r->request->get('back')) ?? $this->generateUrl('money_operations', ['scope' => $scope->key()]));
+            }
+            // an expense category fits only expenses; transfers have none
+            foreach ($ops as $o) {
+                if ($o->type === $category->kind) {
+                    $o->category = $category;
+                    ++$done;
+                }
+            }
+            $msg = 'Категория «'.$category->name.'» у операций: '.$done.(\count($ops) > $done ? ' (другого типа пропущены: '.(\count($ops) - $done).')' : '');
+        }
+        $this->em->flush();
+        $skipped = \count(array_unique($r->request->all('ids'))) - \count($ops);
+        $this->addFlash('ok', $msg.($skipped > 0 ? '. Чужие операции не тронуты: '.$skipped : ''));
+
+        return $this->redirect(AccountController::localPath((string) $r->request->get('back')) ?? $this->generateUrl('money_operations', ['scope' => $scope->key()]));
+    }
+
     #[Route('/export.csv', name: 'money_export')]
     public function export(Scope $scope): StreamedResponse
     {

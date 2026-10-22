@@ -65,11 +65,24 @@
     {% if sum.income %}<b class="income">+{{ sum.income|money(in, true) }}</b>{% endif %}
     {% if sum.expense %}<b class="expense">−{{ sum.expense|money(in, true) }}</b>{% endif %}
     {% if sum.missing %}<small class="muted">без учёта {{ sum.missing|join(', ') }}</small>{% endif %}
+    <button type="button" class="btn small" data-bulk-toggle>Выбрать</button>
 </div>
+<form id="bulk" method="post" action="{{ path('money_operations_bulk', {scope: scope.key}) }}" class="bulk-bar" hidden>
+    <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
+    <input type="hidden" name="back" value="{{ app.request.requestUri }}">
+    <b data-bulk-count>Выбрано: 0</b>
+    <select name="category" aria-label="Категория">
+        <option value="">Категория…</option>
+        {% for kind, label in {expense: 'Расходы', income: 'Доходы'} %}<optgroup label="{{ label }}">{% for c in categories|filter(c => c.kind == kind and not c.archived) %}<option value="{{ c.id }}">{{ c.label }}</option>{% endfor %}</optgroup>{% endfor %}
+    </select>
+    <button class="btn small primary" name="recategorize" value="1">Сменить категорию</button>
+    <button class="btn small danger" name="delete" value="1" data-confirm="Удалить выбранные операции?">Удалить</button>
+    <button type="button" class="btn small" data-bulk-toggle>Отмена</button>
+</form>
 {% endif %}
 {% for day, ops in days %}
     <h3 class="day"><span>{{ day|date('d.m.Y, D')|replace({Mon: 'пн', Tue: 'вт', Wed: 'ср', Thu: 'чт', Fri: 'пт', Sat: 'сб', Sun: 'вс'}) }}</span>{% if dayNet[day] is defined and dayNet[day] != 0 %}<span class="{{ dayNet[day] > 0 ? 'income' : 'expense' }}">{{ dayNet[day] > 0 ? '+' : '−' }}{{ (dayNet[day]|abs)|money(in, true) }}</span>{% endif %}</h3>
-    <section class="card">{% for o in ops %}{% include 'money/_op.html.twig' %}{% endfor %}</section>
+    <section class="card">{% for o in ops %}{% include 'money/_op.html.twig' with {bulk: true} %}{% endfor %}</section>
 {% else %}
     <p class="muted center">Операций нет</p>
 {% endfor %}

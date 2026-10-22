@@ -257,6 +257,31 @@ document.addEventListener('DOMContentLoaded', () => {
         sync();
     }
 
+    // operations list: pick several and recategorize / delete them at once
+    const bulk = document.getElementById('bulk');
+    if (bulk) {
+        const boxes = () => [...document.querySelectorAll('.op-check input')];
+        const count = () => { bulk.querySelector('[data-bulk-count]').textContent = 'Выбрано: ' + boxes().filter(b => b.checked).length; };
+        document.querySelectorAll('[data-bulk-toggle]').forEach(b => b.addEventListener('click', () => {
+            const on = document.body.classList.toggle('selecting');
+            bulk.hidden = !on;
+            if (!on) boxes().forEach(x => { x.checked = false; });
+            count();
+        }));
+        document.addEventListener('change', e => { if (e.target.closest('.op-check')) count(); });
+        // while selecting, a tap on a row ticks it instead of opening it
+        document.addEventListener('click', e => {
+            const op = document.body.classList.contains('selecting') && e.target.closest('a.op');
+            if (!op) return;
+            e.preventDefault();
+            const box = op.previousElementSibling?.querySelector('input');
+            if (box) { box.checked = !box.checked; count(); }
+        });
+        bulk.addEventListener('submit', e => {
+            if (!boxes().some(b => b.checked)) { e.preventDefault(); alert('Отметьте операции'); }
+        });
+    }
+
     const form = document.querySelector('[data-op-form]');
     if (!form) return;
     const $ = sel => form.querySelector(sel);
@@ -454,4 +479,5 @@ document.addEventListener('DOMContentLoaded', () => {
         form.addEventListener('change', labels);
         labels();
     }
+
 });

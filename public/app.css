@@ -542,3 +542,12 @@ fieldset.share .check { margin: var(--s2) 0; }
 .edit-row form { margin-top: var(--s2); }
 .cat-more form { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s2); }
 .cat-more select, .cat-more .ss { flex: 1 1 160px; min-width: 0; margin: 0; }
+.op + .op-check + .op { border-top: 1px solid var(--line); }
+.op-check { display: none; }
+.selecting .card:has(.op-check) { display: grid; grid-template-columns: auto 1fr; column-gap: var(--s3); align-items: center; }
+.selecting .op-check { display: flex; align-self: stretch; align-items: center; }
+.op-check input { width: 22px; height: 22px; margin: 0; accent-color: var(--accent); }
+.bulk-bar { position: sticky; bottom: calc(var(--nav-h, 72px) + 8px); z-index: 5; display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; padding: var(--s3); margin-bottom: var(--s3); border-radius: var(--r); background: var(--surface); border: 1px solid var(--line); box-shadow: 0 6px 24px rgb(0 0 0 / .12); }
+.bulk-bar[hidden] { display: none; }
+.bulk-bar b { margin-right: auto; font-size: 14px; }
+.bulk-bar select, .bulk-bar .ss { flex: 1 1 160px; margin: 0; }

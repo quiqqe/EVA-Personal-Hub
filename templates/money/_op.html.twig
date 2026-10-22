@@ -3,6 +3,7 @@
 {# in my personal list a shared bill shows what left my account; the group sees the whole bill #}
 {% set shown = not scope.group and o.accountAmount is not null ? o.accountAmount : o.amount %}
 {% set people = o.splits|filter(sp => sp.amount > 0)|length %}
+{% if bulk|default(false) %}<label class="op-check"><input type="checkbox" form="bulk" name="ids[]" value="{{ o.id }}" aria-label="Выбрать"></label>{% endif %}
 <a class="op" href="{{ path('money_operation_edit', {scope: o.group ? o.group.id : scope.key, id: o.id}) }}">
     <span class="op-icon">{{ o.type == 'transfer' ? '🔁' : (o.category ? o.category.icon : (o.type == 'income' ? '💰' : '💸')) }}</span>
     <span class="op-main">
