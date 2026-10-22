@@ -10,6 +10,7 @@ use App\Money\Money;
 use App\Money\Rates;
 use App\Money\Scope;
 use Doctrine\ORM\EntityManagerInterface;
+use League\CommonMark\GithubFlavoredMarkdownConverter;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -36,6 +37,16 @@ final class HubController extends BaseController
             'accounts' => \count($accounts),
             'groups' => $ledger->groupsOf($me),
         ]);
+    }
+
+    /** "How it works": the user guide itself, so the app and the docs never disagree. */
+    #[Route('/help', name: 'help')]
+    public function help(): Response
+    {
+        $md = (string) file_get_contents($this->getParameter('kernel.project_dir').'/docs/user-guide.md');
+        $html = (new GithubFlavoredMarkdownConverter(['html_input' => 'strip', 'allow_unsafe_links' => false]))->convert($md);
+
+        return $this->render('help.html.twig', ['guide' => (string) $html]);
     }
 
     #[Route('/profile', name: 'profile')]

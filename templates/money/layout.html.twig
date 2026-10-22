@@ -27,6 +27,7 @@
             <a href="{{ path('money_import', {scope: s}) }}">📥 Импорт выписки</a>
             <a href="{{ path('money_export', {scope: s}) }}">📤 Экспорт в CSV</a>
             {% if scope.group %}<a href="{{ path('group', {id: s}) }}">⚙️ Группа и приглашения</a>{% endif %}
+            <a href="{{ path('help') }}">❓ Как это работает</a>
             <a href="{{ path('hub') }}">🧰 Все инструменты</a>
         </div>
     </details>

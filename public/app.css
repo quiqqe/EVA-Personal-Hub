@@ -551,3 +551,11 @@ fieldset.share .check { margin: var(--s2) 0; }
 .bulk-bar[hidden] { display: none; }
 .bulk-bar b { margin-right: auto; font-size: 14px; }
 .bulk-bar select, .bulk-bar .ss { flex: 1 1 160px; margin: 0; }
+.guide { line-height: 1.6; }
+.guide h1 { margin-top: 0; }
+.guide h2 { margin: var(--s6, 32px) 0 var(--s2); font-size: 20px; }
+.guide ul, .guide ol { padding-left: 1.2em; }
+.guide li + li { margin-top: 4px; }
+.guide table { width: 100%; border-collapse: collapse; font-size: 14px; display: block; overflow-x: auto; }
+.guide th, .guide td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+.guide code { background: var(--surface-2); padding: 1px 5px; border-radius: 6px; font-size: .92em; }
