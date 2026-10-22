@@ -14,6 +14,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\RememberMeBadge;
 
@@ -29,11 +30,16 @@ final class PasswordResetController extends BaseController
     }
 
     #[Route('/password/forgot', name: 'password_forgot')]
-    public function forgot(Request $r): Response
+    public function forgot(Request $r, RateLimiterFactoryInterface $authLimiter): Response
     {
         $sent = false;
         if ($r->isMethod('POST')) {
             $this->checkCsrf($r);
+            if (self::tooFast($r, $authLimiter)) {
+                return $this->render('auth/forgot.html.twig', ['sent' => false, 'error' => 'Слишком много попыток. Подождите 15 минут']);
+            }
+            // old unused links are of no use to anyone
+            $this->em->createQuery('DELETE FROM '.PasswordReset::class.' p WHERE p.createdAt < :old')->setParameter('old', new \DateTimeImmutable('-1 day'))->execute();
             $user = $this->users->findOneBy(['email' => mb_strtolower(trim((string) $r->request->get('email')))]);
             $recent = $user ? $this->em->createQuery('SELECT COUNT(p.tokenHash) FROM '.PasswordReset::class.' p WHERE p.user = :u AND p.createdAt > :since')
                 ->setParameter('u', $user)->setParameter('since', new \DateTimeImmutable('-2 minutes'))->getSingleScalarResult() : 0;

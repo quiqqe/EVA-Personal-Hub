@@ -7,6 +7,7 @@
         <div class="flash flash-ok" role="status">Если аккаунт с этим email привязан к Telegram, бот <b>@{{ telegram_bot() }}</b> уже прислал ссылку для нового пароля. Она действует 30 минут.</div>
         <p class="muted">Не пришло? Проверьте email. Ссылка приходит только если Telegram привязан к аккаунту — письма с сервера не отправляются. Если Telegram привязан, можно просто войти через него — пароль не нужен.</p>
     {% else %}
+        {% if error|default(null) %}<div class="flash flash-error" role="alert">{{ error }}</div>{% endif %}
         <p class="muted">Пришлём ссылку для нового пароля в Telegram — в бот, через который вы входили или который привязали в профиле. Без привязанного Telegram восстановить пароль нельзя: письма с сервера не отправляются.</p>
         <label for="email">Email аккаунта</label>
         <input type="email" name="email" id="email" required autofocus autocomplete="email" inputmode="email" placeholder="you@example.com">

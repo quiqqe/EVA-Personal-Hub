@@ -84,6 +84,8 @@ final class HubController extends BaseController
                     return $this->redirectToRoute('profile');
                 }
                 $me->password = $hasher->hashPassword($me, $new);
+                // a reset link sent earlier must not undo the new password
+                $em->createQuery('DELETE FROM '.\App\Entity\PasswordReset::class.' p WHERE p.user = :u')->setParameter('u', $me)->execute();
             }
             $em->flush();
             $this->addFlash('ok', 'Сохранено');

@@ -49,5 +49,5 @@
     </div>
     <small class="muted">Запоминается в этом браузере.</small>
 </section>
-<a href="{{ path('logout') }}" class="btn">Выйти</a>
+<form method="post" action="{{ path('logout') }}"><input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}"><button class="btn">Выйти</button></form>
 {% endblock %}

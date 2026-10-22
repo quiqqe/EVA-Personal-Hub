@@ -26,6 +26,7 @@ security:
                 always_remember_me: true
             logout:
                 path: logout
+                enable_csrf: true
             login_throttling:
                 max_attempts: 5
 

@@ -16,6 +16,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\RememberMeBadge;
 
 /**
@@ -33,6 +34,7 @@ final class TelegramController extends BaseController
         private readonly UserRepository $users,
         private readonly EntityManagerInterface $em,
         private readonly LoggerInterface $logger,
+        private readonly RateLimiterFactoryInterface $authLimiter,
     ) {
     }
 
@@ -52,6 +54,11 @@ final class TelegramController extends BaseController
     {
         if (!$this->telegram->enabled()) {
             throw $this->createNotFoundException();
+        }
+        if (self::tooFast($r, $this->authLimiter)) {
+            $this->addFlash('error', 'Слишком много попыток входа через Telegram. Подождите 15 минут');
+
+            return $this->redirectToRoute($linkTo ? 'profile' : 'login');
         }
         $this->em->createQuery('DELETE FROM '.TelegramLogin::class.' t WHERE t.createdAt < :old')
             ->setParameter('old', new \DateTimeImmutable('-'.TelegramLogin::TTL.' seconds'))->execute();

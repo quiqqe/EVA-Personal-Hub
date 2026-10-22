@@ -12,6 +12,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 
 final class AuthController extends BaseController
@@ -33,7 +34,7 @@ final class AuthController extends BaseController
     }
 
     #[Route('/register', name: 'register')]
-    public function register(Request $r, EntityManagerInterface $em, UserPasswordHasherInterface $hasher, Security $security): Response
+    public function register(Request $r, EntityManagerInterface $em, UserPasswordHasherInterface $hasher, Security $security, RateLimiterFactoryInterface $authLimiter): Response
     {
         $error = null;
         if ($r->isMethod('POST')) {
@@ -43,6 +44,7 @@ final class AuthController extends BaseController
             $password = (string) $r->request->get('password');
             $currency = (string) $r->request->get('currency');
             $error = match (true) {
+                self::tooFast($r, $authLimiter) => 'Слишком много попыток. Подождите 15 минут',
                 !filter_var($email, FILTER_VALIDATE_EMAIL) => 'Некорректный email',
                 $name === '' || mb_strlen($name) > 100 => 'Введите имя',
                 mb_strlen($password) < 8 => 'Пароль — минимум 8 символов',

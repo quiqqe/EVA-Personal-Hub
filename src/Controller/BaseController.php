@@ -9,6 +9,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use App\Entity\Group;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Security\Http\Util\TargetPathTrait;
 
 abstract class BaseController extends AbstractController
@@ -18,6 +19,12 @@ abstract class BaseController extends AbstractController
     public static function getSubscribedServices(): array
     {
         return parent::getSubscribedServices() + ['doctrine' => '?'.ManagerRegistry::class];
+    }
+
+    /** Too many sign-up / reset / Telegram attempts from one address: slow down brute force and spam. */
+    protected static function tooFast(Request $r, RateLimiterFactoryInterface $limiter): bool
+    {
+        return !$limiter->create('ip-'.$r->getClientIp())->consume()->isAccepted();
     }
 
     /** Where to go right after signing in: the page that asked for it (an invite link), else the hub. */
