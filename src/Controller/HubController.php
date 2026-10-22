@@ -32,10 +32,22 @@ final class HubController extends BaseController
             $byCurrency[$a->currency] = ($byCurrency[$a->currency] ?? 0) + $balances[(string) $a->id];
         }
 
+        // each group's tile shows its common money, the same number as on its dashboard
+        $groups = [];
+        foreach ($ledger->groupsOf($me) as $g) {
+            $common = $ledger->commonAccounts($g);
+            $gBalances = $ledger->balances($common);
+            $sums = [];
+            foreach ($common as $a) {
+                $sums[$a->currency] = ($sums[$a->currency] ?? 0) + $gBalances[(string) $a->id];
+            }
+            $groups[] = ['group' => $g, 'total' => $common ? $rates->total($sums, $g->currency)[0] : null];
+        }
+
         return $this->render('hub.html.twig', [
             'total' => $rates->total($byCurrency, $me->currency)[0],
             'accounts' => \count($accounts),
-            'groups' => $ledger->groupsOf($me),
+            'groups' => $groups,
         ]);
     }
 

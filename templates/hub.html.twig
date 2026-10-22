@@ -20,10 +20,12 @@
             <small class="tile-sub">Добавьте наличные, карту или крипто-кошелёк</small>
         {% endif %}
     </a>
-    {% for g in groups %}
+    {% for row in groups %}
+        {% set g = row.group %}
         <a class="tile" href="{{ path('money', {scope: g.id}) }}">
             <span class="tile-icon">👥</span>
             <b>{{ g.name }}</b>
+            {% if row.total is not null %}<span class="tile-sum">{{ row.total|money(g.currency, true) }}</span>{% endif %}
             <small>Общие деньги · {{ g.memberships|length }} чел.</small>
         </a>
     {% endfor %}

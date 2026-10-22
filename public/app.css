@@ -559,3 +559,4 @@ fieldset.share .check { margin: var(--s2) 0; }
 .guide table { width: 100%; border-collapse: collapse; font-size: 14px; display: block; overflow-x: auto; }
 .guide th, .guide td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
 .guide code { background: var(--surface-2); padding: 1px 5px; border-radius: 6px; font-size: .92em; }
+.tile-sum { font: 700 20px var(--font-display); font-variant-numeric: tabular-nums; }
