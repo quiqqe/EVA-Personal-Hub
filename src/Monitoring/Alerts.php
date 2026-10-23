@@ -25,7 +25,7 @@ final readonly class Alerts
         }
         $sent = false;
         try {
-            foreach ($this->em->getRepository(User::class)->findBy(['admin' => true]) as $admin) {
+            foreach ($this->em->getRepository(User::class)->findBy(['role' => array_keys(User::ROLES)]) as $admin) {
                 if ($admin->telegramId) {
                     $sent = $this->telegram->send($admin->telegramId, $text) || $sent;
                 }

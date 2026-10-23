@@ -1,0 +1,17 @@
+{% extends 'base.html.twig' %}
+{% block title %}Ошибки — EVA{% endblock %}
+{% block body %}
+{% include 'admin/_nav.html.twig' %}
+<section class="card">
+    <div class="card-head"><h2>{{ all ? 'Все ошибки' : 'Открытые ошибки' }}</h2><a href="{{ path('admin_errors', all ? {} : {all: 1}) }}">{{ all ? 'только открытые' : 'показать решённые' }}</a></div>
+    <p class="muted small">Ошибки сервера (не 404 и не «нет доступа»). Одинаковые собраны в одну строку со счётчиком. Хранятся 90 дней.</p>
+    {% for e in errors %}
+        <a class="row admin-error {{ e.resolved ? 'archived' }}" href="{{ path('admin_error', {hash: e.hash}) }}">
+            <span><b>{{ e.message|length > 140 ? e.message|slice(0, 140) ~ '…' : e.message }}</b><br><small class="muted">{{ e.place }}{{ e.url ? ' · ' ~ e.url }}</small></span>
+            <span class="right"><b class="{{ e.resolved ? '' : 'expense' }}">×{{ e.count }}</b><br><small class="muted">{{ e.lastSeen|date('d.m H:i') }}</small></span>
+        </a>
+    {% else %}
+        <p class="muted">{{ all ? 'Ошибок не было.' : 'Открытых ошибок нет.' }}</p>
+    {% endfor %}
+</section>
+{% endblock %}

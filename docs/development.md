@@ -74,18 +74,24 @@ tests/MoneyLogicTest   unit-тесты Money, Debts, Schedule, Csv
 - `branding/` — логотип и картинки для Telegram: `logo.svg` (= `public/icon.svg`), `logo-mark.svg` (только «E»),
   `bot-avatar.svg/png` 640×640 (аватарка бота, Telegram обрезает кругом), `miniapp-cover.svg/png` 640×360 (BotFather `/newapp`).
   PNG отрисованы из SVG в Chromium со шрифтом Manrope; в образ папка не попадает.
-- **Роли.** На сайте: `ROLE_USER` у всех, `ROLE_ADMIN` — у администраторов (`User::$admin`). Администратора назначают
-  только из консоли: `bin/console app:admin you@mail` (или `tg:<id>`), `--revoke` — снять, без аргументов — список.
-  После смены роли человек перелогинивается. В группах — свои роли `owner` / `member` (`Membership::$role`).
-- **Админка** `/admin` (только `ROLE_ADMIN`): состояние (бот, куда идут уведомления, Bugsink), пользователи с последним
-  входом и неудачными попытками, журнал безопасности всех пользователей, кнопки «тестовое уведомление / ошибка в Bugsink».
-- **Мониторинг.** Ошибки приложения (кроме 4xx) уходят в Telegram через `App\Monitoring\Alerts`: в чат
-  `TELEGRAM_ADMIN_CHAT_ID`, если задан (например, группа), иначе — каждому администратору с привязанным Telegram:
-  `App\Monitoring\TelegramAlertHandler` в `monolog.yaml` (только prod), одна и та же ошибка — не чаще раза в 10 минут.
+- **Роли.** `ROLE_USER` у всех. `User::$role`: `admin` → `ROLE_ADMIN` (админка, ошибки, журнал безопасности, уведомления
+  в Telegram); `super_admin` → `ROLE_SUPER_ADMIN` (то же + раздаёт роли в «Пользователях»; `role_hierarchy`).
+  Первого суперадмина — только из консоли: `bin/console app:admin you@mail --super` (`tg:<id>`, `name:<имя>`;
+  `--revoke` — снять; без аргументов — список). Свою роль в интерфейсе менять нельзя. Новая роль — после перевхода.
+  В группах свои роли `owner` / `member` (`Membership::$role`).
+- **Админка** `/admin`: «Обзор» (за сутки: ошибки, неудачные входы, входы, события сервера; состояние; тестовые
+  уведомление и ошибка), «Ошибки» (`app_error`: одинаковые — одна строка со счётчиком, деталь со стеком, «решена» —
+  откроется сама при повторе, 90 дней), «Безопасность» (журнал всех: фильтр по типу, поиск по IP/email/имени, страницы),
+  «Пользователи» (последний вход, неудачные попытки, роли).
+- **Мониторинг.** Ошибки приложения (кроме 4xx) — `App\Monitoring\TelegramAlertHandler` в `monolog.yaml` (prod и dev):
+  пишет в `app_error` и шлёт через `App\Monitoring\Alerts` — в чат `TELEGRAM_ADMIN_CHAT_ID`, если задан, иначе каждому
+  admin/super_admin с привязанным Telegram; одна и та же ошибка — не чаще раза в 10 минут, со ссылкой на неё в админке.
+  `bin/console app:server-event "текст" [--ip=…] [--alert]` — событие сервера в журнал безопасности (и в Telegram).
   id чата: добавить бота в группу (или написать ему) и отправить `/chatid`. `bin/console app:alert "текст"`
   (или `-` — из stdin) шлёт сообщение туда же — им пользуются серверные скрипты, чтобы токен бота был только в приложении.
   Логи контейнеров ротируются (`compose.prod.yaml`, `x-logging`: 10 МБ × 5).
-- **Подробности ошибок** — свой Bugsink (совместим с Sentry SDK) на нашем сервере: `sentry/sentry-symfony`, только prod,
+- **Подробности ошибок** — свой Bugsink (совместим с Sentry SDK) на нашем сервере, в общей Docker-сети `eva-monitoring`
+  (её создаёт `bin/deploy`, приложение в ней видит Bugsink как `bugsink:8000`): `sentry/sentry-symfony`, только prod,
   `config/packages/sentry.yaml`. `SENTRY_DSN` пустой — выключено. Личные данные не отправляются (`send_default_pii: false`),
   404/405/403 игнорируются. Проверка: `bin/console sentry:test`. Telegram говорит «что-то сломалось», Bugsink — где и почему.
 - **Журнал безопасности** — таблица `security_event` (`App\Security\SecurityLog::record`, хранится 30 дней, чистится

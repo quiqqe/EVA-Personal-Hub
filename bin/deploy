@@ -44,6 +44,8 @@ compose() { docker compose -f compose.prod.yaml --env-file "$ENV_FILE" "$@"; }
 
 # a failed build leaves the running containers untouched
 compose build --pull
+# the network shared with monitoring tools (Bugsink); compose only joins it
+docker network create eva-monitoring >/dev/null 2>&1 || true
 compose up -d --remove-orphans
 compose exec -T app bin/console doctrine:migrations:migrate -n --allow-no-migration
 # point the Telegram bot at this site; a Telegram hiccup must not fail the deploy

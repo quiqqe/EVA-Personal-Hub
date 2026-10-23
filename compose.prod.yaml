@@ -33,6 +33,10 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-eva}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.local}@postgres:5432/${POSTGRES_DB:-eva}?serverVersion=16&charset=utf8
     volumes:
       - sessions:/app/var/sessions
+    # shared with the self-hosted Bugsink (errors go to http://bugsink:8000 inside this network)
+    networks:
+      - default
+      - monitoring
     depends_on:
       postgres:
         condition: service_healthy
@@ -52,6 +56,11 @@ services:
       retries: 10
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+networks:
+  monitoring:
+    name: eva-monitoring
+    external: true
 
 volumes:
   postgres_data:

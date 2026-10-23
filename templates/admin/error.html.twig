@@ -1,0 +1,24 @@
+{% extends 'base.html.twig' %}
+{% block title %}Ошибка — EVA{% endblock %}
+{% block body %}
+{% include 'admin/_nav.html.twig' %}
+<section class="card">
+    <h2>{{ e.message|length > 200 ? e.message|slice(0, 200) ~ '…' : e.message }}</h2>
+    <dl class="facts">
+        <dt>Где</dt><dd>{{ e.place }}</dd>
+        <dt>Запрос</dt><dd>{{ e.url ?? '—' }}</dd>
+        <dt>Сколько раз</dt><dd>{{ e.count }}</dd>
+        <dt>Впервые</dt><dd>{{ e.firstSeen|date('d.m.Y H:i') }}</dd>
+        <dt>Последний раз</dt><dd>{{ e.lastSeen|date('d.m.Y H:i') }}</dd>
+        <dt>Статус</dt><dd>{{ e.resolved ? 'решена' : 'открыта' }}</dd>
+    </dl>
+    {% if e.message|length > 200 %}<pre class="trace">{{ e.message }}</pre>{% endif %}
+    {% if e.trace %}<details><summary>Стек вызовов</summary><pre class="trace">{{ e.trace }}</pre></details>{% endif %}
+    <form method="post" class="actions">
+        <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
+        <button class="btn small">{{ e.resolved ? 'Открыть снова' : 'Отметить решённой' }}</button>
+        <a class="btn small" href="{{ path('admin_errors') }}">← К списку</a>
+    </form>
+    <p class="muted small">Решённая ошибка откроется сама, если повторится.</p>
+</section>
+{% endblock %}

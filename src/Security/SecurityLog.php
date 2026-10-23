@@ -19,9 +19,20 @@ final readonly class SecurityLog
     {
     }
 
+    /** An event from the server's scripts (no request, no user). */
+    public function server(string $text, string $ip = ''): void
+    {
+        $this->insert('server', null, $text, $ip, 'сервер');
+    }
+
     public function record(string $type, ?User $user = null, ?string $detail = null): void
     {
         $r = $this->requests->getMainRequest();
+        $this->insert($type, $user, $detail, (string) $r?->getClientIp(), $r ? self::device($r) : 'консоль');
+    }
+
+    private function insert(string $type, ?User $user, ?string $detail, string $ip, string $device): void
+    {
         try {
             // a user that is not saved yet (or was removed) cannot be referenced
             $known = $user && $this->em->contains($user) ? $user : null;
@@ -30,8 +41,8 @@ final readonly class SecurityLog
                 'id' => Uuid::v7()->toRfc4122(),
                 'type' => $type,
                 'user_id' => $known?->id->toRfc4122(),
-                'ip' => mb_substr((string) $r?->getClientIp(), 0, 45),
-                'device' => $r ? self::device($r) : 'консоль',
+                'ip' => mb_substr($ip, 0, 45),
+                'device' => $device,
                 'detail' => $detail !== null ? mb_substr($detail, 0, 200) : null,
                 'created_at' => (new \DateTimeImmutable())->format('Y-m-d H:i:sP'),
             ]);

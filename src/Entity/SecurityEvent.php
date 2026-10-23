@@ -24,6 +24,9 @@ class SecurityEvent
         'password_changed' => 'Пароль изменён',
         'telegram_linked' => 'Telegram привязан',
         'telegram_unlinked' => 'Telegram отвязан',
+        'role_changed' => 'Роль изменена',
+        // from the server's own scripts (app:server-event): SSH sign-ins, health, bans
+        'server' => 'Сервер',
     ];
 
     #[ORM\Id, ORM\Column(type: UuidType::NAME)]

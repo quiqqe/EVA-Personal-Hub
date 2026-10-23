@@ -574,3 +574,13 @@ fieldset.share .check { margin: var(--s2) 0; }
 .seg span .i { width: 16px; height: 16px; vertical-align: -.2em; }
 .doc-tabs { margin-bottom: var(--s4); }
 .sec-event { align-items: flex-start; font-size: 14px; } .sec-event.warn > span { color: var(--exp-text); }
+.admin-tabs { grid-template-columns: repeat(4, 1fr); margin-bottom: var(--s4); }
+.admin-tabs a { display: block; text-align: center; padding: 10px 4px; border-radius: 11px; color: var(--muted); font-weight: 650; font-size: 14px; }
+.admin-tabs a.on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
+.admin-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--s3); }
+.admin-stats a { display: flex; flex-direction: column; padding: var(--s3); border-radius: var(--r); background: var(--surface-2); color: var(--ink); }
+.admin-stats b { font: 700 24px var(--font-display); }
+.admin-stats small { color: var(--muted); }
+.admin-error { align-items: flex-start; gap: var(--s3); }
+.admin-error .right { text-align: right; flex: none; }
+.trace { white-space: pre-wrap; word-break: break-all; font-size: 12px; background: var(--surface-2); padding: var(--s3); border-radius: 10px; max-height: 420px; overflow: auto; }

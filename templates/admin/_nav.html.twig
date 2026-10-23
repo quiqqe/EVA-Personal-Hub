@@ -1,0 +1,6 @@
+<h1>Администрирование</h1>
+<div class="seg admin-tabs" role="tablist" aria-label="Разделы">
+    {% for k, v in {overview: ['admin', 'Обзор'], errors: ['admin_errors', 'Ошибки'], security: ['admin_security', 'Безопасность'], users: ['admin_users', 'Пользователи']} %}
+        <a role="tab" class="{{ tab == k ? 'on' }}" href="{{ path(v[0]) }}">{{ v[1] }}</a>
+    {% endfor %}
+</div>

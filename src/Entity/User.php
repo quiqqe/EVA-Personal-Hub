@@ -36,9 +36,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column]
     public \DateTimeImmutable $createdAt;
 
-    /** Site administrator: sees the admin page and gets alerts in Telegram. Granted only from the console (app:admin). */
-    #[ORM\Column(options: ['default' => false])]
-    public bool $admin = false;
+    public const ROLES = ['admin' => 'Администратор', 'super_admin' => 'Суперадмин'];
+
+    /**
+     * Site role: null — ordinary user; admin — admin pages, errors, security journal, alerts in Telegram;
+     * super_admin — the same plus giving and taking roles. The first one is granted from the console (app:admin).
+     */
+    #[ORM\Column(length: 20, nullable: true)]
+    public ?string $role = null;
 
     public function __construct(
         #[ORM\Column(length: 180, unique: true, nullable: true)]
@@ -60,7 +65,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function getRoles(): array
     {
-        return $this->admin ? ['ROLE_USER', 'ROLE_ADMIN'] : ['ROLE_USER'];
+        return match ($this->role) {
+            'super_admin' => ['ROLE_USER', 'ROLE_SUPER_ADMIN'],
+            'admin' => ['ROLE_USER', 'ROLE_ADMIN'],
+            default => ['ROLE_USER'],
+        };
     }
 
     public function getPassword(): string

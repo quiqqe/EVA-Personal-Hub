@@ -1,0 +1,34 @@
+{% extends 'base.html.twig' %}
+{% block title %}Пользователи — EVA{% endblock %}
+{% block body %}
+{% include 'admin/_nav.html.twig' %}
+<section class="card">
+    <p class="muted">Всего {{ counts.total }}, за 7 дней +{{ counts.week }} · с Telegram {{ counts.tg }} · с email {{ counts.email }}</p>
+    <div class="scroll"><table class="table">
+        <tr><th>Пользователь</th><th>Вход</th><th>Создан</th><th>Последний вход</th><th>Неудачных за 7 дн.</th><th>Роль</th></tr>
+        {% for u in users %}
+            <tr>
+                <td>{{ u.name }}<br><small class="muted">{{ u.email ?? '—' }}</small></td>
+                <td>{{ u.tg and u.email ? 'email + Telegram' : (u.tg ? 'Telegram' : 'email') }}</td>
+                <td>{{ u.created_at|date('d.m.Y') }}</td>
+                <td>{{ u.last_login ? u.last_login|date('d.m H:i') : '—' }}</td>
+                <td class="{{ u.failed ? 'expense' }}">{{ u.failed ?: '' }}</td>
+                <td>
+                    {% if is_granted('ROLE_SUPER_ADMIN') and u.id != app.user.id.toRfc4122 %}
+                        <form method="post" action="{{ path('admin_user_role', {id: u.id}) }}" data-autosubmit>
+                            <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
+                            <select name="role" aria-label="Роль {{ u.name }}">
+                                <option value="">—</option>
+                                {% for k, v in roles %}<option value="{{ k }}" {{ u.role == k ? 'selected' }}>{{ v }}</option>{% endfor %}
+                            </select>
+                        </form>
+                    {% else %}
+                        {{ u.role ? roles[u.role] : '—' }}
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+    </table></div>
+    {% if is_granted('ROLE_SUPER_ADMIN') %}<p class="muted small">Администратор видит админку и получает уведомления; суперадмин — ещё и раздаёт роли. Новая роль применяется при следующем входе человека.</p>{% endif %}
+</section>
+{% endblock %}
