@@ -7,4 +7,5 @@ tests
 docker/nginx
 *.md
 !docs/user-guide.md
+!docs/changelog.md
 branding

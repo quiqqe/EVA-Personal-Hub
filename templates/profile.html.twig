@@ -49,6 +49,6 @@
     </div>
     <small class="muted">Запоминается в этом браузере.</small>
 </section>
-<p><a href="{{ path('help') }}">{{ icon('help') }} Как это работает</a></p>
+<p><a href="{{ path('help') }}">{{ icon('help') }} Как это работает</a> · <a href="{{ path('changelog') }}">{{ icon('sparkles') }} Что нового</a></p>
 <form method="post" action="{{ path('logout') }}"><input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}"><button class="btn">Выйти</button></form>
 {% endblock %}

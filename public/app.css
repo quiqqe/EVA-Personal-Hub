@@ -572,3 +572,4 @@ fieldset.share .check { margin: var(--s2) 0; }
 .tip > .i { margin-top: 2px; color: var(--accent); }
 .btn .i { width: 18px; height: 18px; }
 .seg span .i { width: 16px; height: 16px; vertical-align: -.2em; }
+.doc-tabs { margin-bottom: var(--s4); }

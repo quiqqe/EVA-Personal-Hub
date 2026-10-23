@@ -1,5 +1,9 @@
 {% extends 'base.html.twig' %}
-{% block title %}Как это работает — EVA{% endblock %}
+{% block title %}{{ doc == 'changelog' ? 'Что нового' : 'Как это работает' }} — EVA{% endblock %}
 {% block body %}
+<div class="seg basis-seg doc-tabs" role="tablist" aria-label="Справка">
+    <a role="tab" class="{{ doc != 'changelog' ? 'on' }}" href="{{ path('help') }}">Как это работает</a>
+    <a role="tab" class="{{ doc == 'changelog' ? 'on' }}" href="{{ path('changelog') }}">Что нового</a>
+</div>
 <article class="card guide">{{ guide|raw }}</article>
 {% endblock %}

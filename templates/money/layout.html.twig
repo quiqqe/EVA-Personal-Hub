@@ -28,6 +28,7 @@
             <a href="{{ path('money_export', {scope: s}) }}">{{ icon('upload') }} Экспорт в CSV</a>
             {% if scope.group %}<a href="{{ path('group', {id: s}) }}">{{ icon('settings') }} Группа и приглашения</a>{% endif %}
             <a href="{{ path('help') }}">{{ icon('help') }} Как это работает</a>
+            <a href="{{ path('changelog') }}">{{ icon('sparkles') }} Что нового</a>
             <a href="{{ path('hub') }}">{{ icon('grid') }} Все инструменты</a>
         </div>
     </details>

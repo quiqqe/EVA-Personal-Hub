@@ -51,14 +51,15 @@ final class HubController extends BaseController
         ]);
     }
 
-    /** "How it works": the user guide itself, so the app and the docs never disagree. */
-    #[Route('/help', name: 'help')]
-    public function help(): Response
+    /** "How it works" and "What's new": the docs themselves, so the app and the docs never disagree. */
+    #[Route('/help', name: 'help', defaults: ['doc' => 'user-guide'])]
+    #[Route('/changelog', name: 'changelog', defaults: ['doc' => 'changelog'])]
+    public function help(string $doc): Response
     {
-        $md = (string) file_get_contents($this->getParameter('kernel.project_dir').'/docs/user-guide.md');
+        $md = (string) file_get_contents($this->getParameter('kernel.project_dir')."/docs/$doc.md");
         $html = (new GithubFlavoredMarkdownConverter(['html_input' => 'strip', 'allow_unsafe_links' => false]))->convert($md);
 
-        return $this->render('help.html.twig', ['guide' => (string) $html]);
+        return $this->render('help.html.twig', ['guide' => (string) $html, 'doc' => $doc]);
     }
 
     #[Route('/profile', name: 'profile')]

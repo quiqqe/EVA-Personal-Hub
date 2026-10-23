@@ -75,7 +75,8 @@ tests/MoneyLogicTest   unit-тесты Money, Debts, Schedule, Csv
   `bot-avatar.svg/png` 640×640 (аватарка бота, Telegram обрезает кругом), `miniapp-cover.svg/png` 640×360 (BotFather `/newapp`).
   PNG отрисованы из SVG в Chromium со шрифтом Manrope; в образ папка не попадает.
 - Лимиты попыток — `config/packages/rate_limiter.yaml` (`auth`); выход — POST с `csrf_token('logout')`.
-- Справка `/help` рендерит `docs/user-guide.md` (league/commonmark); файл исключён из `*.md` в `.dockerignore`.
+- Справка `/help` и «Что нового» `/changelog` рендерят `docs/user-guide.md` и `docs/changelog.md` (league/commonmark);
+  оба файла исключены из `*.md` в `.dockerignore`, иначе их не будет в образе.
 
 - Все POST-формы с `csrf_token('form')` (`BaseController::checkCsrf`), вход — с CSRF и лимитом попыток (5/мин).
 - Любой id из URL/формы проверяется на принадлежность пространству (`Scope::owns`, `Ledger::visible`, выборки
