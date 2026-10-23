@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="640" height="640">
+  <!-- Telegram crops avatars to a circle: full-bleed background, the E well inside the circle -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="640" y2="640" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5b5cf6"/>
+      <stop offset="1" stop-color="#7c3aed"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="200" cy="140" r="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="640" height="640" fill="url(#bg)"/>
+  <rect width="640" height="640" fill="url(#glow)"/>
+  <g transform="translate(320 320) scale(8.5) translate(-32 -32)">
+    <g fill="#fff">
+      <rect x="17" y="16" width="8" height="32" rx="4"/>
+      <rect x="17" y="16" width="30" height="8" rx="4"/>
+      <rect x="17" y="40" width="30" height="8" rx="4"/>
+      <rect x="17" y="28" width="17" height="8" rx="4"/>
+    </g>
+    <circle cx="43" cy="32" r="4.5" fill="#a5f3fc"/>
+  </g>
+</svg>

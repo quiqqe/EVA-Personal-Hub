@@ -67,6 +67,9 @@ tests/MoneyLogicTest   unit-тесты Money, Debts, Schedule, Csv
   `app.js` отправляет их на `/login/telegram/webapp`, `Telegram::verifyWebApp` проверяет HMAC (ключ — HMAC токена с
   "WebAppData", не старше суток) и входит. Флаг `tgApp` в sessionStorage подгружает `telegram-web-app.js`
   (на весь экран, без закрытия свайпом). В BotFather ничего настраивать не нужно.
+- `branding/` — логотип и картинки для Telegram: `logo.svg` (= `public/icon.svg`), `logo-mark.svg` (только «E»),
+  `bot-avatar.svg/png` 640×640 (аватарка бота, Telegram обрезает кругом), `miniapp-cover.svg/png` 640×360 (BotFather `/newapp`).
+  PNG отрисованы из SVG в Chromium со шрифтом Manrope; в образ папка не попадает.
 - Лимиты попыток — `config/packages/rate_limiter.yaml` (`auth`); выход — POST с `csrf_token('logout')`.
 - Справка `/help` рендерит `docs/user-guide.md` (league/commonmark); файл исключён из `*.md` в `.dockerignore`.
 
