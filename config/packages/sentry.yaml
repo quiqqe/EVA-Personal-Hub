@@ -1,0 +1,13 @@
+# Error details go to our own Bugsink (Sentry-compatible), only in prod. Empty SENTRY_DSN = switched off.
+when@prod:
+    sentry:
+        dsn: '%env(default::SENTRY_DSN)%'
+        options:
+            # no e-mails, IPs or cookies leave the app; only the error and its place in the code
+            send_default_pii: false
+            # 4xx are bots and wrong links, not errors
+            ignore_exceptions:
+                - Symfony\Component\HttpKernel\Exception\NotFoundHttpException
+                - Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException
+                - Symfony\Component\Security\Core\Exception\AccessDeniedException
+            traces_sample_rate: 0

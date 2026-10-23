@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-ALLOWED=" HTTP_PORT DEFAULT_URI TELEGRAM_BOT_TOKEN TELEGRAM_BOT_USERNAME TELEGRAM_ADMIN_CHAT_ID "
+ALLOWED=" HTTP_PORT DEFAULT_URI TELEGRAM_BOT_TOKEN TELEGRAM_BOT_USERNAME TELEGRAM_ADMIN_CHAT_ID SENTRY_DSN "
 while IFS= read -r line || [ -n "$line" ]; do
     name="${line%%=*}"
     if [[ "$ALLOWED" == *" $name "* ]]; then

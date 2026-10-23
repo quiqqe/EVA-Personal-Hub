@@ -79,6 +79,9 @@ tests/MoneyLogicTest   unit-тесты Money, Debts, Schedule, Csv
   id чата: добавить бота в группу (или написать ему) и отправить `/chatid`. `bin/console app:alert "текст"`
   (или `-` — из stdin) шлёт сообщение туда же — им пользуются серверные скрипты, чтобы токен бота был только в приложении.
   Логи контейнеров ротируются (`compose.prod.yaml`, `x-logging`: 10 МБ × 5).
+- **Подробности ошибок** — свой Bugsink (совместим с Sentry SDK) на нашем сервере: `sentry/sentry-symfony`, только prod,
+  `config/packages/sentry.yaml`. `SENTRY_DSN` пустой — выключено. Личные данные не отправляются (`send_default_pii: false`),
+  404/405/403 игнорируются. Проверка: `bin/console sentry:test`. Telegram говорит «что-то сломалось», Bugsink — где и почему.
 - **Журнал безопасности** — таблица `security_event` (`App\Security\SecurityLog::record`, хранится 30 дней, чистится
   сама на ~1% записей): входы (`RecordSignIns`, кроме автологина «запомнить меня»), неудачные попытки (с email и аккаунтом,
   если он есть), превышение лимитов, выход, регистрация, сброс и смена пароля, привязка/отвязка Telegram.
@@ -103,7 +106,7 @@ tests/MoneyLogicTest   unit-тесты Money, Debts, Schedule, Csv
   генерирует при первом запуске и больше не меняет; без обязательных переменных останавливается до сборки
   (сайт остаётся на старой версии); собирает образ, поднимает, применяет миграции, проверяет, что сайт отвечает.
 - Секреты GitHub: `SSH_KEY`, `SSH_KNOWN_HOSTS`, `SSH_HOST`, `SSH_USER`, `HTTP_PORT`, `DEFAULT_URI`,
-  `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `TELEGRAM_ADMIN_CHAT_ID` (необязательный — куда слать уведомления).
+  `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `TELEGRAM_ADMIN_CHAT_ID` (необязательный — куда слать уведомления), `SENTRY_DSN` (необязательный — Bugsink).
 
 **Новая переменная окружения:** пустой плейсхолдер с комментарием в `.env`; имя — в `ALLOWED` в `bin/ci-deploy`,
 в `PASSED` (и `REQUIRED`, если без неё нельзя) в `bin/deploy`, в `env` и список `for v in ...` в workflow;
