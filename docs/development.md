@@ -79,6 +79,11 @@ tests/MoneyLogicTest   unit-тесты Money, Debts, Schedule, Csv
   id чата: добавить бота в группу (или написать ему) и отправить `/chatid`. `bin/console app:alert "текст"`
   (или `-` — из stdin) шлёт сообщение туда же — им пользуются серверные скрипты, чтобы токен бота был только в приложении.
   Логи контейнеров ротируются (`compose.prod.yaml`, `x-logging`: 10 МБ × 5).
+- **Журнал безопасности** — таблица `security_event` (`App\Security\SecurityLog::record`, хранится 30 дней, чистится
+  сама на ~1% записей): входы (`RecordSignIns`, кроме автологина «запомнить меня»), неудачные попытки (с email и аккаунтом,
+  если он есть), превышение лимитов, выход, регистрация, сброс и смена пароля, привязка/отвязка Telegram.
+  Пишется отдельным INSERT, не через flush, и никогда не ломает запрос. Пользователь видит свои события в профиле.
+  `bin/console app:security:digest [--hours=24]` — текстовая сводка для ежедневного отчёта сервера.
 - Лимиты попыток — `config/packages/rate_limiter.yaml` (`auth`); выход — POST с `csrf_token('logout')`.
 - Справка `/help` и «Что нового» `/changelog` рендерят `docs/user-guide.md` и `docs/changelog.md` (league/commonmark);
   оба файла исключены из `*.md` в `.dockerignore`, иначе их не будет в образе.

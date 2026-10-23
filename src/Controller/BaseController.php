@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Entity\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use App\Entity\Group;
+use App\Security\SecurityLog;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
@@ -18,13 +19,22 @@ abstract class BaseController extends AbstractController
 
     public static function getSubscribedServices(): array
     {
-        return parent::getSubscribedServices() + ['doctrine' => '?'.ManagerRegistry::class];
+        return parent::getSubscribedServices() + ['doctrine' => '?'.ManagerRegistry::class, SecurityLog::class => SecurityLog::class];
     }
 
     /** Too many sign-up / reset / Telegram attempts from one address: slow down brute force and spam. */
-    protected static function tooFast(Request $r, RateLimiterFactoryInterface $limiter): bool
+    protected function tooFast(Request $r, RateLimiterFactoryInterface $limiter): bool
     {
-        return !$limiter->create('ip-'.$r->getClientIp())->consume()->isAccepted();
+        $blocked = !$limiter->create('ip-'.$r->getClientIp())->consume()->isAccepted();
+        $blocked && $this->securityLog('rate_limited', null, $r->getPathInfo());
+
+        return $blocked;
+    }
+
+    /** A line in the security journal (sign-ins, password and Telegram changes). */
+    protected function securityLog(string $type, ?User $user = null, ?string $detail = null): void
+    {
+        $this->container->get(SecurityLog::class)->record($type, $user, $detail);
     }
 
     /** Where to go right after signing in: the page that asked for it (an invite link), else the hub. */

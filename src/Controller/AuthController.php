@@ -44,7 +44,7 @@ final class AuthController extends BaseController
             $password = (string) $r->request->get('password');
             $currency = (string) $r->request->get('currency');
             $error = match (true) {
-                self::tooFast($r, $authLimiter) => 'Слишком много попыток. Подождите 15 минут',
+                $this->tooFast($r, $authLimiter) => 'Слишком много попыток. Подождите 15 минут',
                 !filter_var($email, FILTER_VALIDATE_EMAIL) => 'Некорректный email',
                 $name === '' || mb_strlen($name) > 100 => 'Введите имя',
                 mb_strlen($password) < 8 => 'Пароль — минимум 8 символов',
@@ -57,6 +57,7 @@ final class AuthController extends BaseController
                 $user->password = $hasher->hashPassword($user, $password);
                 $em->persist($user);
                 $em->flush();
+                $this->securityLog('register', $user, 'email');
                 // read the target before logging in: login() consumes it
                 $next = $this->afterLogin($r);
                 $security->login($user, 'form_login', 'main');

@@ -110,6 +110,7 @@ final class HubController extends BaseController
                 $me->password = $hasher->hashPassword($me, $new);
                 // a reset link sent earlier must not undo the new password
                 $em->createQuery('DELETE FROM '.\App\Entity\PasswordReset::class.' p WHERE p.user = :u')->setParameter('u', $me)->execute();
+                $this->securityLog('password_changed', $me, 'в профиле');
             }
             $em->flush();
             $this->addFlash('ok', 'Сохранено');
@@ -117,7 +118,10 @@ final class HubController extends BaseController
             return $this->redirectToRoute('profile');
         }
 
-        return $this->render('profile.html.twig');
+        // the account's own journal: recent sign-ins and attempts, so a stranger's try is visible
+        return $this->render('profile.html.twig', [
+            'events' => $em->getRepository(\App\Entity\SecurityEvent::class)->findBy(['user' => $this->me()], ['createdAt' => 'DESC'], 15),
+        ]);
     }
 
     /** The browser reports its zone; it's taken unless the person chose one in the profile. */

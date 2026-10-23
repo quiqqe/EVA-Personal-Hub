@@ -16,7 +16,7 @@ use Symfony\Component\Security\Http\Event\LoginSuccessEvent;
 #[AsEventListener]
 final readonly class AttachPendingTelegram
 {
-    public function __construct(private UserRepository $users, private EntityManagerInterface $em)
+    public function __construct(private UserRepository $users, private EntityManagerInterface $em, private SecurityLog $log)
     {
     }
 
@@ -32,6 +32,7 @@ final readonly class AttachPendingTelegram
         if ($user->telegramId === null && !$this->users->findOneBy(['telegramId' => $pending['id']])) {
             $user->telegramId = (int) $pending['id'];
             $this->em->flush();
+            $this->log->record('telegram_linked', $user, 'при входе по email');
             if ($session instanceof FlashBagAwareSessionInterface) {
                 $session->getFlashBag()->add('ok', 'Telegram привязан к вашему аккаунту — дальше можно входить в один тап');
             }

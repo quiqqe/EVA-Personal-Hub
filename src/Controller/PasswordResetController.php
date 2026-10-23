@@ -35,12 +35,13 @@ final class PasswordResetController extends BaseController
         $sent = false;
         if ($r->isMethod('POST')) {
             $this->checkCsrf($r);
-            if (self::tooFast($r, $authLimiter)) {
+            if ($this->tooFast($r, $authLimiter)) {
                 return $this->render('auth/forgot.html.twig', ['sent' => false, 'error' => 'Слишком много попыток. Подождите 15 минут']);
             }
             // old unused links are of no use to anyone
             $this->em->createQuery('DELETE FROM '.PasswordReset::class.' p WHERE p.createdAt < :old')->setParameter('old', new \DateTimeImmutable('-1 day'))->execute();
             $user = $this->users->findOneBy(['email' => mb_strtolower(trim((string) $r->request->get('email')))]);
+            $this->securityLog('reset_requested', $user, mb_strtolower(trim((string) $r->request->get('email'))));
             $recent = $user ? $this->em->createQuery('SELECT COUNT(p.tokenHash) FROM '.PasswordReset::class.' p WHERE p.user = :u AND p.createdAt > :since')
                 ->setParameter('u', $user)->setParameter('since', new \DateTimeImmutable('-2 minutes'))->getSingleScalarResult() : 0;
             if ($user?->telegramId && !$recent && $this->telegram->enabled()) {
@@ -85,6 +86,7 @@ final class PasswordResetController extends BaseController
                 // every link of this user dies with the first use
                 $this->em->createQuery('DELETE FROM '.PasswordReset::class.' p WHERE p.user = :u')->setParameter('u', $user)->execute();
                 $this->em->flush();
+                $this->securityLog('password_changed', $user, 'по ссылке из Telegram');
                 $security->login($user, 'form_login', 'main', [(new RememberMeBadge())->enable()]);
                 $this->addFlash('ok', 'Пароль изменён');
 

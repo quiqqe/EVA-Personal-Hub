@@ -573,3 +573,4 @@ fieldset.share .check { margin: var(--s2) 0; }
 .btn .i { width: 18px; height: 18px; }
 .seg span .i { width: 16px; height: 16px; vertical-align: -.2em; }
 .doc-tabs { margin-bottom: var(--s4); }
+.sec-event { align-items: flex-start; font-size: 14px; } .sec-event.warn > span { color: var(--exp-text); }

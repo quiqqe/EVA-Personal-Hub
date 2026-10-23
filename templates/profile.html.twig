@@ -41,6 +41,18 @@
 </section>
 {% endif %}
 <section class="card">
+    <h2>Безопасность</h2>
+    <p class="muted small">Входы и попытки входа за последние 30 дней. Видите незнакомое устройство или место — смените пароль.</p>
+    {% for e in events %}
+        <div class="row sec-event {{ e.type in ['login_failed', 'rate_limited'] ? 'warn' }}">
+            <span>{{ icon(e.type in ['login_failed', 'rate_limited'] ? 'lock' : (e.type == 'login' ? 'check-circle' : 'settings')) }} {{ constant('App\\Entity\\SecurityEvent::TYPES')[e.type] ?? e.type }}{% if e.detail and e.type not in ['login_failed', 'rate_limited', 'reset_requested'] %} <small class="muted">· {{ e.detail }}</small>{% endif %}<br><small class="muted">{{ e.device }} · IP {{ e.ip }}</small></span>
+            <small class="muted">{{ e.createdAt|date('d.m H:i') }}</small>
+        </div>
+    {% else %}
+        <p class="muted">Пока пусто.</p>
+    {% endfor %}
+</section>
+<section class="card">
     <h2>Тема оформления</h2>
     <div class="seg" role="radiogroup" aria-label="Тема">
         <label><input type="radio" name="theme_choice" value=""><span>{{ icon('contrast') }} Системная</span></label>

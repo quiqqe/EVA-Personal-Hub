@@ -55,7 +55,7 @@ final class TelegramController extends BaseController
         if (!$this->telegram->enabled()) {
             throw $this->createNotFoundException();
         }
-        if (self::tooFast($r, $this->authLimiter)) {
+        if ($this->tooFast($r, $this->authLimiter)) {
             $this->addFlash('error', 'Слишком много попыток входа через Telegram. Подождите 15 минут');
 
             return $this->redirectToRoute($linkTo ? 'profile' : 'login');
@@ -102,6 +102,7 @@ final class TelegramController extends BaseController
                 $this->addFlash('error', 'Этот Telegram уже привязан к другому аккаунту');
             } else {
                 $attempt->linkTo->telegramId = $attempt->telegramId;
+                $this->securityLog('telegram_linked', $attempt->linkTo, 'из профиля');
                 $this->addFlash('ok', 'Telegram привязан — теперь можно входить в один тап');
             }
             $this->em->flush();
@@ -139,6 +140,7 @@ final class TelegramController extends BaseController
             $user->telegramId = (int) $pending['id'];
             $this->em->persist($user);
             $this->em->flush();
+            $this->securityLog('register', $user, 'Telegram');
             $r->getSession()->remove(self::PENDING);
             $next = $this->afterLogin($r);
             $security->login($user, 'form_login', 'main', [(new RememberMeBadge())->enable()]);
@@ -268,6 +270,7 @@ final class TelegramController extends BaseController
             $this->addFlash('error', 'Сначала задайте email и пароль — иначе войти будет нечем');
         } else {
             $me->telegramId = null;
+            $this->securityLog('telegram_unlinked', $me);
             $this->em->flush();
             $this->addFlash('ok', 'Telegram отвязан');
         }
@@ -278,26 +281,6 @@ final class TelegramController extends BaseController
     /** "Chrome, macOS · 1.2.3.4": so the person recognises their own request in the bot. */
     public static function describe(Request $r): string
     {
-        $ua = (string) $r->headers->get('User-Agent');
-        $browser = match (true) {
-            str_contains($ua, 'YaBrowser') => 'Яндекс Браузер',
-            str_contains($ua, 'Edg/') => 'Edge',
-            str_contains($ua, 'OPR/') => 'Opera',
-            str_contains($ua, 'Firefox/') => 'Firefox',
-            str_contains($ua, 'Chrome/') || str_contains($ua, 'CriOS/') => 'Chrome',
-            str_contains($ua, 'Safari/') => 'Safari',
-            default => 'браузер',
-        };
-        $os = match (true) {
-            str_contains($ua, 'iPhone') => 'iPhone',
-            str_contains($ua, 'iPad') => 'iPad',
-            str_contains($ua, 'Android') => 'Android',
-            str_contains($ua, 'Mac OS X') => 'macOS',
-            str_contains($ua, 'Windows') => 'Windows',
-            str_contains($ua, 'Linux') => 'Linux',
-            default => '',
-        };
-
-        return mb_substr($browser.($os ? ", $os" : '').' · IP '.$r->getClientIp(), 0, 200);
+        return mb_substr(\App\Security\SecurityLog::device($r).' · IP '.$r->getClientIp(), 0, 200);
     }
 }
