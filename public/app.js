@@ -75,6 +75,13 @@ function searchableSelect(sel) {
         li.classList.toggle('active', i === active);
         if (i === active) li.scrollIntoView({block: 'nearest'});
     });
+    // the on-screen keyboard (iPhone, Telegram) covers the bottom of the screen: keep the sheet in the part still visible
+    const fit = () => {
+        const vv = window.visualViewport;
+        if (!vv) return;
+        pop.style.bottom = Math.max(0, window.innerHeight - vv.height - vv.offsetTop) + 'px';
+        pop.style.maxHeight = Math.round(vv.height * 0.85) + 'px';
+    };
     const open = () => {
         if (sel.disabled) return;
         document.querySelectorAll('.ss.open').forEach(o => o !== wrap && o.ssClose());
@@ -83,7 +90,7 @@ function searchableSelect(sel) {
         const sheet = matchMedia('(max-width: 640px)').matches;
         document.body.classList.toggle('ss-sheet-open', sheet);
         // a phone sheet lives in <body>: inside a card with its own z-index it would end up under the dimmed backdrop
-        if (sheet) document.body.append(pop);
+        if (sheet) { document.body.append(pop); fit(); visualViewport?.addEventListener('resize', fit); visualViewport?.addEventListener('scroll', fit); }
         search.value = '';
         render();
         search.focus({preventScroll: true});
@@ -92,6 +99,9 @@ function searchableSelect(sel) {
         pop.hidden = true;
         wrap.classList.remove('open');
         document.body.classList.remove('ss-sheet-open');
+        visualViewport?.removeEventListener('resize', fit);
+        visualViewport?.removeEventListener('scroll', fit);
+        pop.style.bottom = pop.style.maxHeight = '';
         wrap.append(pop);
     };
     const choose = (value) => {

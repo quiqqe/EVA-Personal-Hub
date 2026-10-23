@@ -460,7 +460,7 @@ label > .ss { margin-top: 6px; }
     .ss-pill .ss-pop { left: 0; right: 0; }
     .ss-head { padding: var(--s3); }
     .ss-close { display: block; }
-    .ss-list { max-height: none; flex: 1; }
+    .ss-list { max-height: none; flex: 1 1 auto; min-height: 0; }
     .ss-opt { padding: 13px 14px; font-size: 16px; }
     body.ss-sheet-open::after { content: ""; position: fixed; inset: 0; z-index: 35; background: rgb(0 0 0 / .35); }
 }
