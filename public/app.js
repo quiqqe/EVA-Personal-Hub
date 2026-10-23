@@ -80,7 +80,10 @@ function searchableSelect(sel) {
         document.querySelectorAll('.ss.open').forEach(o => o !== wrap && o.ssClose());
         pop.hidden = false;
         wrap.classList.add('open');
-        document.body.classList.toggle('ss-sheet-open', matchMedia('(max-width: 640px)').matches);
+        const sheet = matchMedia('(max-width: 640px)').matches;
+        document.body.classList.toggle('ss-sheet-open', sheet);
+        // a phone sheet lives in <body>: inside a card with its own z-index it would end up under the dimmed backdrop
+        if (sheet) document.body.append(pop);
         search.value = '';
         render();
         search.focus({preventScroll: true});
@@ -89,6 +92,7 @@ function searchableSelect(sel) {
         pop.hidden = true;
         wrap.classList.remove('open');
         document.body.classList.remove('ss-sheet-open');
+        wrap.append(pop);
     };
     const choose = (value) => {
         if (sel.value !== value) {
@@ -111,7 +115,7 @@ function searchableSelect(sel) {
         else if (e.key === 'Escape') { close(); btn.focus(); }
     });
     btn.addEventListener('keydown', e => { if (['ArrowDown', 'Enter', ' '].includes(e.key) && pop.hidden) { open(); e.preventDefault(); } });
-    document.addEventListener('mousedown', e => { if (!pop.hidden && !wrap.contains(e.target)) close(); });
+    document.addEventListener('mousedown', e => { if (!pop.hidden && !wrap.contains(e.target) && !pop.contains(e.target)) close(); });
     sel.addEventListener('change', sync);
     // the operation form enables/disables and re-filters selects as you switch type
     new MutationObserver(sync).observe(sel, {attributes: true, attributeFilter: ['disabled']});
