@@ -149,6 +149,35 @@ final class TelegramController extends BaseController
         return $this->render('auth/telegram_new.html.twig', ['name' => $pending['name'], 'invitedTo' => $this->invitedTo($r)]);
     }
 
+    /** The Mini App opens here: the same site, signed in by the data Telegram passes in the address. */
+    #[Route('/tg', name: 'telegram_app', methods: ['GET'])]
+    public function app(): Response
+    {
+        return $this->render('auth/telegram_app.html.twig');
+    }
+
+    #[Route('/login/telegram/webapp', name: 'login_telegram_webapp', methods: ['POST'])]
+    public function webApp(Request $r, Security $security): JsonResponse
+    {
+        $this->checkCsrf($r);
+        $tg = $this->telegram->webAppUser((string) $r->request->get('init_data'));
+        if (!$tg) {
+            return $this->json(['redirect' => $this->generateUrl('login')]);
+        }
+        $owner = $this->users->findOneBy(['telegramId' => $tg['tgId']]);
+        if (!$owner) {
+            // same choice as after the bot: a new account, or attach this Telegram to an e-mail account
+            $r->getSession()->set(self::PENDING, ['id' => $tg['tgId'], 'name' => $tg['name']]);
+
+            return $this->json(['redirect' => $this->generateUrl('login_telegram_new')]);
+        }
+        if ($this->getUser() !== $owner) {
+            $security->login($owner, 'form_login', 'main', [(new RememberMeBadge())->enable()]);
+        }
+
+        return $this->json(['redirect' => $this->generateUrl('hub')]);
+    }
+
     /** Updates from Telegram. Always 200: Telegram retries anything else. */
     #[Route('/telegram/webhook', name: 'telegram_webhook', methods: ['POST'])]
     public function webhook(Request $r): Response
@@ -174,8 +203,9 @@ final class TelegramController extends BaseController
         $attempt = $u['param'] !== '' ? $this->em->find(TelegramLogin::class, $u['param']) : null;
         if (!$attempt) {
             $this->telegram->call('sendMessage', ['chat_id' => $u['chatId'], 'text' => $u['param'] === ''
-                ? "Это бот EVA Personal.\nВойти на сайт: $site"
-                : "Ссылка для входа устарела. Нажмите «Войти через Telegram» на сайте ещё раз:\n$site"]);
+                ? "Это бот EVA Personal. Откройте приложение кнопкой ниже — или на сайте: $site"
+                : "Ссылка для входа устарела. Нажмите «Войти через Telegram» на сайте ещё раз:\n$site",
+                'reply_markup' => ['inline_keyboard' => [[['text' => '📱 Открыть EVA', 'web_app' => ['url' => $this->generateUrl('telegram_app', [], 0)]]]]]]);
 
             return;
         }

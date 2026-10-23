@@ -39,6 +39,10 @@ final class TelegramWebhookCommand extends Command
             'allowed_updates' => ['message', 'callback_query'],
         ]);
         $output->writeln(($result['ok'] ?? false) ? "Webhook: $url" : '<error>setWebhook failed: '.($result['description'] ?? 'no answer').'</error>');
+        // the bot's menu button opens the site itself as a Mini App: nothing to update in Telegram when the site changes
+        $app = $this->urls->generate('telegram_app', [], UrlGeneratorInterface::ABSOLUTE_URL);
+        $menu = $this->telegram->call('setChatMenuButton', ['menu_button' => ['type' => 'web_app', 'text' => 'Открыть', 'web_app' => ['url' => $app]]]);
+        $output->writeln(($menu['ok'] ?? false) ? "Menu button: $app" : '<error>setChatMenuButton failed: '.($menu['description'] ?? 'no answer').'</error>');
 
         return ($result['ok'] ?? false) ? Command::SUCCESS : Command::FAILURE;
     }

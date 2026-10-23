@@ -180,4 +180,19 @@ final class MoneyLogicTest extends TestCase
         self::assertSame('2026-10-20', Csv::date($rows[1][0])?->format('Y-m-d'));
         self::assertNull(Csv::date('вчера'));
     }
+
+    public function testTelegramMiniAppSignature(): void
+    {
+        $token = '111:TESTTOKEN';
+        $fields = ['auth_date' => '1000', 'query_id' => 'AAE', 'user' => '{"id":42,"first_name":"Рома"}'];
+        ksort($fields);
+        $check = implode("\n", array_map(fn ($k, $v) => "$k=$v", array_keys($fields), $fields));
+        $signed = http_build_query($fields + ['hash' => hash_hmac('sha256', $check, hash_hmac('sha256', $token, 'WebAppData', true))]);
+
+        self::assertSame(['tgId' => 42, 'name' => 'Рома'], Telegram::verifyWebApp($signed, $token, 2000));
+        self::assertNull(Telegram::verifyWebApp($signed, '222:OTHER', 2000), 'another bot');
+        self::assertNull(Telegram::verifyWebApp(str_replace('42', '43', $signed), $token, 2000), 'changed user');
+        self::assertNull(Telegram::verifyWebApp($signed, $token, 1000 + 86401), 'too old');
+        self::assertNull(Telegram::verifyWebApp('', $token, 2000));
+    }
 }

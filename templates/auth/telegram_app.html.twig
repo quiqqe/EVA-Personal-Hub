@@ -1,0 +1,7 @@
+{% extends 'auth/_layout.html.twig' %}
+{% block title %}EVA Personal{% endblock %}
+{% block form %}
+<div class="tg-wait" data-tg-app data-url="{{ path('login_telegram_webapp') }}" data-token="{{ csrf_token('form') }}" data-login="{{ path('login') }}">
+    <p class="tg-status" aria-live="polite"><span class="spinner" aria-hidden="true"></span> Входим через Telegram…</p>
+</div>
+{% endblock %}

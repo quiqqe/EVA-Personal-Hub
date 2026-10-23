@@ -175,6 +175,26 @@ document.addEventListener('DOMContentLoaded', () => {
         input.focus();
     }));
 
+    // Telegram Mini App: Telegram puts signed user data in the address (#tgWebAppData=…); exchange it for a session
+    const tgApp = document.querySelector('[data-tg-app]');
+    if (tgApp) {
+        const initData = new URLSearchParams(location.hash.slice(1)).get('tgWebAppData');
+        if (!initData) { location.replace(tgApp.dataset.login); return; }
+        try { sessionStorage.setItem('tgApp', '1'); } catch (e) {}
+        fetch(tgApp.dataset.url, {method: 'POST', body: new URLSearchParams({init_data: initData, _token: tgApp.dataset.token})})
+            .then(r => r.json()).then(d => location.replace(d.redirect))
+            .catch(() => location.replace(tgApp.dataset.login));
+    }
+    // inside Telegram: full height, and scrolling the page must not swipe the app closed
+    let inTg = false;
+    try { inTg = sessionStorage.getItem('tgApp') === '1'; } catch (e) {}
+    if (inTg) {
+        const s = document.createElement('script');
+        s.src = 'https://telegram.org/js/telegram-web-app.js';
+        s.onload = () => { const w = window.Telegram?.WebApp; if (!w) return; w.ready(); w.expand(); w.disableVerticalSwipes?.(); };
+        document.head.appendChild(s);
+    }
+
     // Telegram sign-in: open the app (desktop: tg:// straight into Telegram Desktop, phones: t.me opens the app if installed),
     // then poll until the person confirms in the bot
     const wait = document.querySelector('[data-tg-wait]');

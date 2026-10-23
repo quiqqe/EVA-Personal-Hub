@@ -65,6 +65,38 @@ final readonly class Telegram
         return ['kind' => 'start', 'tgId' => (int) $m['from']['id'], 'name' => self::name($m['from']), 'chatId' => (int) $m['chat']['id'], 'param' => $mm[1] ?? ''];
     }
 
+    /** The person who opened the Mini App, if Telegram really signed this initData (and not too long ago). */
+    public function webAppUser(string $initData): ?array
+    {
+        return self::verifyWebApp($initData, $this->token, time());
+    }
+
+    /**
+     * Mini App sign-in check (core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app):
+     * hash = HMAC(sorted "key=value" lines, key = HMAC(bot token, "WebAppData")).
+     *
+     * @return array{tgId: int, name: string}|null
+     */
+    public static function verifyWebApp(string $initData, string $token, int $now): ?array
+    {
+        parse_str($initData, $data);
+        $hash = (string) ($data['hash'] ?? '');
+        unset($data['hash']);
+        if ($token === '' || $hash === '' || !isset($data['user'], $data['auth_date'])) {
+            return null;
+        }
+        ksort($data);
+        $check = implode("\n", array_map(fn ($k, $v) => "$k=$v", array_keys($data), $data));
+        $expected = hash_hmac('sha256', $check, hash_hmac('sha256', $token, 'WebAppData', true));
+        // a day-old launch is still fine (the app may stay open); older data is not accepted again
+        if (!hash_equals($expected, $hash) || $now - (int) $data['auth_date'] > 86400) {
+            return null;
+        }
+        $user = json_decode((string) $data['user'], true);
+
+        return isset($user['id']) ? ['tgId' => (int) $user['id'], 'name' => self::name($user)] : null;
+    }
+
     private static function name(array $from): string
     {
         $name = trim(($from['first_name'] ?? '').' '.($from['last_name'] ?? '')) ?: ($from['username'] ?? 'Telegram');
