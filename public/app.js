@@ -70,17 +70,20 @@ function searchableSelect(sel) {
         active = Math.max(0, items.findIndex(li => li.classList.contains('selected')));
         if (q) active = 0;
         highlight();
+        if (!pop.hidden) fit();
     };
     const highlight = () => items.forEach((li, i) => {
         li.classList.toggle('active', i === active);
         if (i === active) li.scrollIntoView({block: 'nearest'});
     });
     // the on-screen keyboard (iPhone, Telegram) covers the bottom of the screen: keep the sheet in the part still visible
+    // (placed from the visible area itself: in Telegram the window height and the visible area differ even without a keyboard)
     const fit = () => {
         const vv = window.visualViewport;
-        if (!vv) return;
-        pop.style.bottom = Math.max(0, window.innerHeight - vv.height - vv.offsetTop) + 'px';
+        if (!vv || !document.body.classList.contains('ss-sheet-open')) return;
         pop.style.maxHeight = Math.round(vv.height * 0.85) + 'px';
+        pop.style.bottom = 'auto';
+        pop.style.top = Math.round(vv.offsetTop + vv.height - pop.offsetHeight) + 'px';
     };
     const open = () => {
         if (sel.disabled) return;
@@ -101,7 +104,7 @@ function searchableSelect(sel) {
         document.body.classList.remove('ss-sheet-open');
         visualViewport?.removeEventListener('resize', fit);
         visualViewport?.removeEventListener('scroll', fit);
-        pop.style.bottom = pop.style.maxHeight = '';
+        pop.style.top = pop.style.bottom = pop.style.maxHeight = '';
         wrap.append(pop);
     };
     const choose = (value) => {
