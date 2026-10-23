@@ -21,7 +21,7 @@ src/Entity/            общее для хаба: User, Group, Membership
 src/Controller/        вход/регистрация (email и Telegram), профиль, главная-хаб, группы и приглашения
 src/Telegram.php       бот: вызовы Bot API, разбор входящих обновлений
 src/Entity/TelegramLogin  попытка входа/привязки через бота (код, кто нажал «Старт», подтверждено ли)
-src/Command/           app:telegram:webhook — регистрирует webhook бота (запускается из bin/deploy)
+src/Command/           app:telegram:webhook — регистрирует webhook и кнопку меню Mini App (запускается из bin/deploy)
 src/Repository/        UserRepository: загрузка пользователя по email или «tg:<id>»
 src/Money/             инструмент «Деньги»
   Entity/              Account, Category, Operation, Split, Settlement, Budget, Goal, Recurring (+ трейт Scoped)
@@ -63,6 +63,12 @@ tests/MoneyLogicTest   unit-тесты Money, Debts, Schedule, Csv
   подтверждение → `callback_query` от того же Telegram-аккаунта ставит `confirmedAt` → браузер опрашивает
   `/login/telegram/check` и входит. Webhook `/telegram/webhook` принимает только запросы с заголовком
   `X-Telegram-Bot-Api-Secret-Token` = HMAC(токен бота) — отдельного секрета не нужно.
+- Mini App: кнопка меню бота открывает `/tg` (тот же сайт). Telegram кладёт подписанные данные в `#tgWebAppData=…`,
+  `app.js` отправляет их на `/login/telegram/webapp`, `Telegram::verifyWebApp` проверяет HMAC (ключ — HMAC токена с
+  "WebAppData", не старше суток) и входит. Флаг `tgApp` в sessionStorage подгружает `telegram-web-app.js`
+  (на весь экран, без закрытия свайпом). В BotFather ничего настраивать не нужно.
+- Лимиты попыток — `config/packages/rate_limiter.yaml` (`auth`); выход — POST с `csrf_token('logout')`.
+- Справка `/help` рендерит `docs/user-guide.md` (league/commonmark); файл исключён из `*.md` в `.dockerignore`.
 
 - Все POST-формы с `csrf_token('form')` (`BaseController::checkCsrf`), вход — с CSRF и лимитом попыток (5/мин).
 - Любой id из URL/формы проверяется на принадлежность пространству (`Scope::owns`, `Ledger::visible`, выборки
