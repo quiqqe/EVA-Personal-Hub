@@ -90,6 +90,9 @@ tests/MoneyLogicTest   unit-тесты Money, Debts, Schedule, Csv
   id чата: добавить бота в группу (или написать ему) и отправить `/chatid`. `bin/console app:alert "текст"`
   (или `-` — из stdin) шлёт сообщение туда же — им пользуются серверные скрипты, чтобы токен бота был только в приложении.
   Логи контейнеров ротируются (`compose.prod.yaml`, `x-logging`: 10 МБ × 5).
+- **Логи всех проектов сервера** — общий стек Grafana + Loki + Alloy (30 дней) и Bugsink живут в отдельном приватном
+  репозитории инфраструктуры сервера, не здесь: этот проект подключается к ним без настроек (Alloy сам находит контейнеры,
+  ошибки идут в Bugsink по сети `eva-monitoring`).
 - **Подробности ошибок** — свой Bugsink (совместим с Sentry SDK) на нашем сервере, в общей Docker-сети `eva-monitoring`
   (её создаёт `bin/deploy`, приложение в ней видит Bugsink как `bugsink:8000`): `sentry/sentry-symfony`, только prod,
   `config/packages/sentry.yaml`. `SENTRY_DSN` пустой — выключено. Личные данные не отправляются (`send_default_pii: false`),
