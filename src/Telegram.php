@@ -22,11 +22,17 @@ final readonly class Telegram
     /** A message to the admin chat. Never throws: an alert must not break what triggered it. */
     public function alert(string $text): bool
     {
-        if (!$this->enabled() || !$this->adminChat) {
+        return $this->adminChat ? $this->send($this->adminChat, $text) : false;
+    }
+
+    /** A plain message to a chat; false instead of an exception. */
+    public function send(int|string $chat, string $text): bool
+    {
+        if (!$this->enabled()) {
             return false;
         }
         try {
-            return (bool) ($this->call('sendMessage', ['chat_id' => $this->adminChat, 'text' => mb_substr($text, 0, 4000), 'disable_web_page_preview' => true])['ok'] ?? false);
+            return (bool) ($this->call('sendMessage', ['chat_id' => $chat, 'text' => mb_substr($text, 0, 4000), 'disable_web_page_preview' => true])['ok'] ?? false);
         } catch (\Throwable) {
             return false;
         }

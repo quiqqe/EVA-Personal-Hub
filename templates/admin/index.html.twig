@@ -1,0 +1,49 @@
+{% extends 'base.html.twig' %}
+{% block title %}Администрирование — EVA{% endblock %}
+{% block body %}
+<h1>Администрирование</h1>
+
+<section class="card">
+    <h2>Состояние</h2>
+    <div class="row"><span>Telegram-бот</span><b class="{{ state.bot ? 'income' : 'expense' }}">{{ state.bot ? 'настроен' : 'не настроен' }}</b></div>
+    <div class="row"><span>Уведомления об ошибках</span><b class="{{ state.alertsTo ? 'income' : 'expense' }}">{{ state.alertsTo == 'chat' ? 'в чат уведомлений' : (state.alertsTo == 'admins' ? 'администраторам в Telegram' : 'никуда — нет чата и админа с Telegram') }}</b></div>
+    <div class="row"><span>Подробности ошибок (Bugsink)</span><b class="{{ state.sentry ? 'income' : 'expense' }}">{{ state.sentry ? 'подключён' : 'не подключён (нет SENTRY_DSN)' }}</b></div>
+    <div class="row"><span>Администраторы</span><span>{% for a in state.admins %}{{ a.name }}{{ a.telegramId ? '' : ' (без Telegram)' }}{{ not loop.last ? ', ' }}{% endfor %}</span></div>
+    <div class="row"><span>Окружение</span><span>{{ state.env }}</span></div>
+    <form method="post" action="{{ path('admin_test') }}" class="actions">
+        <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
+        <button class="btn small">{{ icon('send') }} Тестовое уведомление</button>
+        <button class="btn small" name="error" value="1">{{ icon('x') }} Тестовая ошибка в Bugsink</button>
+    </form>
+</section>
+
+<section class="card">
+    <h2>Пользователи</h2>
+    <p class="muted">Всего {{ counts.total }}, за 7 дней +{{ counts.week }} · с Telegram {{ counts.tg }} · с email {{ counts.email }}</p>
+    <div class="scroll"><table class="table">
+        <tr><th>Имя</th><th>Вход</th><th>Создан</th><th>Последний вход</th><th>Неудачных за 7 дн.</th></tr>
+        {% for u in users %}
+            <tr>
+                <td>{{ u.name }}{% if u.admin %} <span class="badge">админ</span>{% endif %}<br><small class="muted">{{ u.email ?? '—' }}</small></td>
+                <td>{{ u.tg and u.email ? 'email + Telegram' : (u.tg ? 'Telegram' : 'email') }}</td>
+                <td>{{ u.created_at|date('d.m.Y') }}</td>
+                <td>{{ u.last_login ? u.last_login|date('d.m H:i') : '—' }}</td>
+                <td class="{{ u.failed ? 'expense' }}">{{ u.failed ?: '' }}</td>
+            </tr>
+        {% endfor %}
+    </table></div>
+</section>
+
+<section class="card">
+    <div class="card-head"><h2>Журнал безопасности</h2><a href="{{ path('admin', failedOnly ? {} : {failed: 1}) }}">{{ failedOnly ? 'все события' : 'только неудачные' }}</a></div>
+    <p class="muted small">Последние 100 событий всех пользователей, хранятся 30 дней.</p>
+    {% for e in events %}
+        <div class="row sec-event {{ e.type in ['login_failed', 'rate_limited'] ? 'warn' }}">
+            <span>{{ constant('App\\Entity\\SecurityEvent::TYPES')[e.type] ?? e.type }} · {{ e.user ? e.user.name : (e.detail ?? 'неизвестный') }}{% if e.detail and e.user %} <small class="muted">· {{ e.detail }}</small>{% endif %}<br><small class="muted">{{ e.device }} · IP {{ e.ip }}</small></span>
+            <small class="muted">{{ e.createdAt|date('d.m H:i') }}</small>
+        </div>
+    {% else %}
+        <p class="muted">Событий нет.</p>
+    {% endfor %}
+</section>
+{% endblock %}

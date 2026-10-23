@@ -33,6 +33,7 @@ security:
     access_control:
         - { path: ^/(login|login/telegram|login/telegram/check|login/telegram/new|login/telegram/webapp|tg|telegram/webhook|register|password/forgot|manifest\.webmanifest)$, roles: PUBLIC_ACCESS }
         - { path: ^/password/reset/, roles: PUBLIC_ACCESS }
+        - { path: ^/admin, roles: ROLE_ADMIN }
         - { path: ^/, roles: ROLE_USER }
 
 when@test:

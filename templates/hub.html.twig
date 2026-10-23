@@ -44,6 +44,13 @@
         <b>Как это работает</b>
         <small>Справка и что нового</small>
     </a>
+    {% if is_granted('ROLE_ADMIN') %}
+    <a class="tile" href="{{ path('admin') }}">
+        <span class="tile-icon">{{ icon('lock') }}</span>
+        <b>Администрирование</b>
+        <small>Состояние, пользователи, безопасность</small>
+    </a>
+    {% endif %}
     <div class="tile soon">
         <span class="tile-icon">{{ icon('sparkles') }}</span>
         <small>Здесь появятся новые инструменты</small>

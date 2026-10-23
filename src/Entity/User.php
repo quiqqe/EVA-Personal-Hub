@@ -36,6 +36,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column]
     public \DateTimeImmutable $createdAt;
 
+    /** Site administrator: sees the admin page and gets alerts in Telegram. Granted only from the console (app:admin). */
+    #[ORM\Column(options: ['default' => false])]
+    public bool $admin = false;
+
     public function __construct(
         #[ORM\Column(length: 180, unique: true, nullable: true)]
         public ?string $email,
@@ -56,7 +60,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function getRoles(): array
     {
-        return ['ROLE_USER'];
+        return $this->admin ? ['ROLE_USER', 'ROLE_ADMIN'] : ['ROLE_USER'];
     }
 
     public function getPassword(): string

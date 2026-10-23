@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Monitoring;
 
-use App\Telegram;
 use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\Level;
 use Monolog\LogRecord;
@@ -19,7 +18,7 @@ use Symfony\Contracts\Cache\ItemInterface;
  */
 final class TelegramAlertHandler extends AbstractProcessingHandler
 {
-    public function __construct(private readonly Telegram $telegram, private readonly CacheInterface $cache, private readonly RequestStack $requests)
+    public function __construct(private readonly Alerts $alerts, private readonly CacheInterface $cache, private readonly RequestStack $requests)
     {
         parent::__construct(Level::Error);
     }
@@ -42,7 +41,7 @@ final class TelegramAlertHandler extends AbstractProcessingHandler
             return;
         }
         $req = $this->requests->getMainRequest();
-        $this->telegram->alert("🔴 Ошибка на сайте\n".mb_substr($record->message, 0, 1500)."\n$where"
+        $this->alerts->send("🔴 Ошибка на сайте\n".mb_substr($record->message, 0, 1500)."\n$where"
             .($req ? "\n".$req->getMethod().' '.$req->getPathInfo() : ''));
     }
 }

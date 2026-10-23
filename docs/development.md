@@ -74,7 +74,13 @@ tests/MoneyLogicTest   unit-тесты Money, Debts, Schedule, Csv
 - `branding/` — логотип и картинки для Telegram: `logo.svg` (= `public/icon.svg`), `logo-mark.svg` (только «E»),
   `bot-avatar.svg/png` 640×640 (аватарка бота, Telegram обрезает кругом), `miniapp-cover.svg/png` 640×360 (BotFather `/newapp`).
   PNG отрисованы из SVG в Chromium со шрифтом Manrope; в образ папка не попадает.
-- **Мониторинг.** Ошибки приложения (кроме 4xx) уходят в админский Telegram-чат (`TELEGRAM_ADMIN_CHAT_ID`):
+- **Роли.** На сайте: `ROLE_USER` у всех, `ROLE_ADMIN` — у администраторов (`User::$admin`). Администратора назначают
+  только из консоли: `bin/console app:admin you@mail` (или `tg:<id>`), `--revoke` — снять, без аргументов — список.
+  После смены роли человек перелогинивается. В группах — свои роли `owner` / `member` (`Membership::$role`).
+- **Админка** `/admin` (только `ROLE_ADMIN`): состояние (бот, куда идут уведомления, Bugsink), пользователи с последним
+  входом и неудачными попытками, журнал безопасности всех пользователей, кнопки «тестовое уведомление / ошибка в Bugsink».
+- **Мониторинг.** Ошибки приложения (кроме 4xx) уходят в Telegram через `App\Monitoring\Alerts`: в чат
+  `TELEGRAM_ADMIN_CHAT_ID`, если задан (например, группа), иначе — каждому администратору с привязанным Telegram:
   `App\Monitoring\TelegramAlertHandler` в `monolog.yaml` (только prod), одна и та же ошибка — не чаще раза в 10 минут.
   id чата: добавить бота в группу (или написать ему) и отправить `/chatid`. `bin/console app:alert "текст"`
   (или `-` — из stdin) шлёт сообщение туда же — им пользуются серверные скрипты, чтобы токен бота был только в приложении.

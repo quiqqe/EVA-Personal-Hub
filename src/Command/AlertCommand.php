@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Telegram;
+use App\Monitoring\Alerts;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -15,7 +15,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 #[AsCommand('app:alert', 'Send a message to the admin Telegram chat')]
 final class AlertCommand extends Command
 {
-    public function __construct(private readonly Telegram $telegram)
+    public function __construct(private readonly Alerts $alerts)
     {
         parent::__construct();
     }
@@ -31,10 +31,10 @@ final class AlertCommand extends Command
         if ($text === '-') {
             $text = (string) stream_get_contents(STDIN);
         }
-        if ($this->telegram->alert(trim($text))) {
+        if ($this->alerts->send(trim($text))) {
             return Command::SUCCESS;
         }
-        $output->writeln('<error>Not sent: TELEGRAM_BOT_TOKEN / TELEGRAM_ADMIN_CHAT_ID not set, or Telegram refused</error>');
+        $output->writeln('<error>Not sent: no TELEGRAM_ADMIN_CHAT_ID and no administrator with Telegram (app:admin), or the bot is not configured</error>');
 
         return Command::FAILURE;
     }
