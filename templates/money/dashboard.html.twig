@@ -27,9 +27,9 @@
 {% endif %}
 
 <div class="quick">
-    <a class="btn expense" href="{{ path('money_operation_new', {scope: scope.key, type: 'expense'}) }}"><span>−</span>Расход</a>
-    <a class="btn income" href="{{ path('money_operation_new', {scope: scope.key, type: 'income'}) }}"><span>+</span>Доход</a>
-    <a class="btn" href="{{ path('money_operation_new', {scope: scope.key, type: 'transfer'}) }}"><span>⇄</span>Перевод / обмен</a>
+    <a class="btn expense" href="{{ path('money_operation_new', {scope: scope.key, type: 'expense'}) }}"><span>{{ icon('minus') }}</span>Расход</a>
+    <a class="btn income" href="{{ path('money_operation_new', {scope: scope.key, type: 'income'}) }}"><span>{{ icon('plus') }}</span>Доход</a>
+    <a class="btn" href="{{ path('money_operation_new', {scope: scope.key, type: 'transfer'}) }}"><span>{{ icon('exchange') }}</span>Перевод / обмен</a>
 </div>
 
 <section class="card">
@@ -37,7 +37,7 @@
     <div class="list">
     {% for a in accounts %}
         <a class="row" href="{{ path('money_operations', {scope: scope.key, account: a.id}) }}">
-            <span><span class="acc-icon">{{ a.icon }}</span>{{ a.name }}{% if scope.group and a.user %} <small class="muted">· {{ a.user.name }}</small>{% endif %}</span>
+            <span><span class="acc-icon">{{ icon(a.icon) }}</span>{{ a.name }}{% if scope.group and a.user %} <small class="muted">· {{ a.user.name }}</small>{% endif %}</span>
             <b class="{{ balances[a.id.toRfc4122] < 0 ? 'expense' }}">{{ balances[a.id.toRfc4122]|money(a.currency) }}</b>
         </a>
     {% else %}
@@ -61,7 +61,7 @@
         {% elseif mine < 0 %}<p>Вы должны <b class="expense">{{ (-mine)|money(c) }}</b></p>
         {% else %}<p class="muted">В {{ c }} вы в расчёте</p>{% endif %}
     {% else %}
-        <p class="muted">Все в расчёте. Разделить трату: при вводе расхода отметьте «👥 Разделить».</p>
+        <p class="muted">Все в расчёте. Разделить трату: при вводе расхода отметьте «Разделить».</p>
     {% endfor %}
 </section>
 {% elseif groupDebts %}
@@ -69,7 +69,7 @@
     <div class="card-head"><h2>Долги в группах</h2></div>
     {% for gd in groupDebts %}
         <a class="row" href="{{ path('money_debts', {scope: gd.group.id}) }}">
-            <span>👥 {{ gd.group.name }}</span>
+            <span>{{ icon('users') }} {{ gd.group.name }}</span>
             <span>{% for c, v in gd.amounts %}<b class="{{ v > 0 ? 'income' : 'expense' }}">{{ v > 0 ? 'вам должны ' : 'вы должны ' }}{{ (v|abs)|money(c) }}</b>{{ not loop.last ? ' · ' }}{% endfor %}</span>
         </a>
     {% endfor %}
@@ -93,7 +93,7 @@
     <div class="card-head"><h2>Цели</h2><a href="{{ path('money_plan', {scope: scope.key}) }}">все</a></div>
     {% for g in goals %}
         <div class="progress">
-            <div class="row"><span>🎯 {{ g.goal.name }}</span><span>{{ g.saved|money(g.goal.account.currency) }} / {{ g.goal.target|money(g.goal.account.currency) }}</span></div>
+            <div class="row"><span>{{ icon('target') }} {{ g.goal.name }}</span><span>{{ g.saved|money(g.goal.account.currency) }} / {{ g.goal.target|money(g.goal.account.currency) }}</span></div>
             {% include 'money/_bar.html.twig' with {value: g.saved, max: g.goal.target} %}
         </div>
     {% endfor %}

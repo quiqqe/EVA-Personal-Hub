@@ -30,7 +30,7 @@
 <section class="card">
     <h2>Telegram</h2>
     {% if app.user.telegramId %}
-        <p>✅ Привязан — можно входить через Telegram.</p>
+        <p>{{ icon('check-circle') }} Привязан — можно входить через Telegram.</p>
         <form method="post" action="{{ path('profile_telegram_unlink') }}" data-confirm="Отвязать Telegram?">
             <input type="hidden" name="_token" value="{{ csrf_token('form') }}"><button class="btn small">Отвязать</button>
         </form>
@@ -43,12 +43,12 @@
 <section class="card">
     <h2>Тема оформления</h2>
     <div class="seg" role="radiogroup" aria-label="Тема">
-        <label><input type="radio" name="theme_choice" value=""><span>◐ Системная</span></label>
-        <label><input type="radio" name="theme_choice" value="light"><span>☀ Светлая</span></label>
-        <label><input type="radio" name="theme_choice" value="dark"><span>☾ Тёмная</span></label>
+        <label><input type="radio" name="theme_choice" value=""><span>{{ icon('contrast') }} Системная</span></label>
+        <label><input type="radio" name="theme_choice" value="light"><span>{{ icon('sun') }} Светлая</span></label>
+        <label><input type="radio" name="theme_choice" value="dark"><span>{{ icon('moon') }} Тёмная</span></label>
     </div>
     <small class="muted">Запоминается в этом браузере.</small>
 </section>
-<p><a href="{{ path('help') }}">❓ Как это работает</a></p>
+<p><a href="{{ path('help') }}">{{ icon('help') }} Как это работает</a></p>
 <form method="post" action="{{ path('logout') }}"><input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}"><button class="btn">Выйти</button></form>
 {% endblock %}

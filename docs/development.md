@@ -67,6 +67,10 @@ tests/MoneyLogicTest   unit-тесты Money, Debts, Schedule, Csv
   `app.js` отправляет их на `/login/telegram/webapp`, `Telegram::verifyWebApp` проверяет HMAC (ключ — HMAC токена с
   "WebAppData", не старше суток) и входит. Флаг `tgApp` в sessionStorage подгружает `telegram-web-app.js`
   (на весь экран, без закрытия свайпом). В BotFather ничего настраивать не нужно.
+- Иконки интерфейса — SVG-спрайт `public/icons.svg` (контурные, Lucide), в шаблонах `{{ icon('wallet') }}`
+  (`AppExtension::icon`), цвет — `currentColor`, размер — CSS `.i`. Новая иконка: `<symbol id="…">` в спрайт и поднять
+  `?v=` в `AppExtension::icon` и `app.js`. Эмодзи остаются только у категорий (их выбирает пользователь) и в сообщениях бота.
+  Иконка типа счёта — `Account::ICONS`.
 - `branding/` — логотип и картинки для Telegram: `logo.svg` (= `public/icon.svg`), `logo-mark.svg` (только «E»),
   `bot-avatar.svg/png` 640×640 (аватарка бота, Telegram обрезает кругом), `miniapp-cover.svg/png` 640×360 (BotFather `/newapp`).
   PNG отрисованы из SVG в Chromium со шрифтом Manrope; в образ папка не попадает.

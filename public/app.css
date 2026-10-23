@@ -560,3 +560,15 @@ fieldset.share .check { margin: var(--s2) 0; }
 .guide th, .guide td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
 .guide code { background: var(--surface-2); padding: 1px 5px; border-radius: 6px; font-size: .92em; }
 .tile-sum { font: 700 20px var(--font-display); font-variant-numeric: tabular-nums; }
+/* interface icons (public/icons.svg): strokes in the text colour */
+.i { width: 1.15em; height: 1.15em; flex: none; vertical-align: -.2em; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tile-icon .i { width: 24px; height: 24px; color: var(--accent); }
+.tile.featured .tile-icon .i { color: #fff; }
+.acc-icon .i { width: 19px; height: 19px; color: var(--accent); }
+.op-icon .i { width: 20px; height: 20px; color: var(--muted); }
+.quick .btn span .i, .quick-accounts .btn span .i { width: 22px; height: 22px; }
+.more .menu a .i { width: 20px; height: 20px; color: var(--muted); }
+.icon-btn .i { width: 18px; height: 18px; }
+.tip > .i { margin-top: 2px; color: var(--accent); }
+.btn .i { width: 18px; height: 18px; }
+.seg span .i { width: 16px; height: 16px; vertical-align: -.2em; }

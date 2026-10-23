@@ -42,11 +42,11 @@
     {% for g in goals %}
         {% set c = g.goal.account.currency %}
         <div class="progress">
-            <div class="row"><span>🎯 {{ g.goal.name }} <small class="muted">· {{ g.goal.account.name }}</small></span><span>{{ g.saved|money(c) }} / {{ g.goal.target|money(c) }}</span></div>
+            <div class="row"><span>{{ icon('target') }} {{ g.goal.name }} <small class="muted">· {{ g.goal.account.name }}</small></span><span>{{ g.saved|money(c) }} / {{ g.goal.target|money(c) }}</span></div>
             {% include 'money/_bar.html.twig' with {value: g.saved, max: g.goal.target} %}
             <div class="row">
                 <small class="muted">
-                    {% if g.saved >= g.goal.target %}🎉 Цель достигнута!
+                    {% if g.saved >= g.goal.target %}{{ icon('party') }} Цель достигнута!
                     {% else %}Осталось {{ (g.goal.target - g.saved)|money(c) }}
                         {% if g.goal.deadline and g.goal.deadline|date('Y-m-d') < 'now'|date('Y-m-d') %}
                             · срок {{ g.goal.deadline|date('d.m.Y') }} прошёл
@@ -63,7 +63,7 @@
                     <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
                     <input type="hidden" name="id" value="{{ g.goal.id }}">
                     <input name="name" value="{{ g.goal.name }}" required maxlength="100" aria-label="Название">
-                    <select name="account" required aria-label="Счёт">{% for a in accounts %}<option value="{{ a.id }}" {{ a == g.goal.account ? 'selected' }}>{{ a.icon }} {{ a.name }} · {{ a.currency }}</option>{% endfor %}</select>
+                    <select name="account" required aria-label="Счёт">{% for a in accounts %}<option value="{{ a.id }}" {{ a == g.goal.account ? 'selected' }}>{{ a.name }} · {{ a.currency }}</option>{% endfor %}</select>
                     <input name="target" inputmode="decimal" value="{{ g.goal.target|money_input(c) }}" required aria-label="Сколько нужно">
                     <label>Срок (необязательно) <input type="date" name="deadline" value="{{ g.goal.deadline ? g.goal.deadline|date('Y-m-d') }}"></label>
                     <button class="btn primary small">Сохранить</button>
@@ -81,7 +81,7 @@
     <form method="post" action="{{ path('money_goal_save', {scope: scope.key}) }}" class="stack">
         <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
         <input name="name" placeholder="На что копим" required maxlength="100">
-        <select name="account" required>{% for a in accounts %}<option value="{{ a.id }}" {{ a.type == 'savings' ? 'selected' }}>{{ a.icon }} {{ a.name }} · {{ a.currency }}</option>{% endfor %}</select>
+        <select name="account" required>{% for a in accounts %}<option value="{{ a.id }}" {{ a.type == 'savings' ? 'selected' }}>{{ a.name }} · {{ a.currency }}</option>{% endfor %}</select>
         <input name="target" inputmode="decimal" placeholder="Сколько нужно" required>
         <label>Срок (необязательно) <input type="date" name="deadline"></label>
         <button class="btn primary small">Добавить цель</button>
@@ -94,14 +94,14 @@
     {% for t in recurring %}
         <div class="row {{ t.active ? '' : 'archived' }}">
             <a href="{{ path('money_recurring_edit', {scope: scope.key, id: t.id}) }}">
-                <b>{{ t.category ? t.category.label : (t.type == 'transfer' ? '🔁 Перевод' : t.note ?: 'Без категории') }}</b>
+                <b>{{ t.category ? t.category.label : (t.type == 'transfer' ? 'Перевод' : t.note ?: 'Без категории') }}</b>
                 <small class="muted"><br>{{ periods[t.period] }} · {{ t.active ? 'следующая ' ~ t.nextDate|date('d.m.Y') : 'на паузе' }} · {{ t.account.name }}{{ t.toAccount ? ' → ' ~ t.toAccount.name }}</small>
             </a>
             <span class="{{ t.type }}">{{ t.type == 'income' ? '+' : (t.type == 'expense' ? '−') }}{{ t.origCurrency ? t.origAmount|money(t.origCurrency) : t.amount|money(t.account.currency) }}{% if t.origCurrency %}{% set est = convert(t.origAmount, t.origCurrency, t.account.currency) %}<br><small class="muted">{{ est is not null ? '≈ ' ~ est|money(t.account.currency, true) ~ ' по сегодняшнему курсу' : 'пересчитается по курсу дня платежа' }}</small>{% endif %}</span>
             <form method="post" action="{{ path('money_recurring_toggle', {scope: scope.key, id: t.id}) }}" class="mini-actions">
                 <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
-                <button class="btn small" title="{{ t.active ? 'Пауза' : 'Продолжить' }}" aria-label="{{ t.active ? 'Поставить на паузу' : 'Продолжить' }}">{{ t.active ? '⏸' : '▶️' }}</button>
-                <button class="btn small" name="delete" value="1" aria-label="Удалить шаблон" title="Удалить" data-confirm="Удалить шаблон? Созданные операции останутся.">✕</button>
+                <button class="btn small" title="{{ t.active ? 'Пауза' : 'Продолжить' }}" aria-label="{{ t.active ? 'Поставить на паузу' : 'Продолжить' }}">{{ icon(t.active ? 'pause' : 'play') }}</button>
+                <button class="btn small" name="delete" value="1" aria-label="Удалить шаблон" title="Удалить" data-confirm="Удалить шаблон? Созданные операции останутся.">{{ icon('x') }}</button>
             </form>
         </div>
     {% else %}

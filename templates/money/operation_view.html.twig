@@ -13,7 +13,7 @@
         {% if o.createdBy %}<dt>Внёс(ла)</dt><dd>{{ o.createdBy.name }}</dd>{% endif %}
     </dl>
     {% include 'money/_fx_loss.html.twig' %}
-    <p class="hint">🔒 Операция по личному счёту, владелец — {{ owner ? owner.name : 'другой участник' }}. Изменить или удалить её может только владелец счёта.</p>
+    <p class="hint">{{ icon('lock') }} Операция по личному счёту, владелец — {{ owner ? owner.name : 'другой участник' }}. Изменить или удалить её может только владелец счёта.</p>
 </section>
 <a class="btn" href="{{ path('money_operations', {scope: scope.key, m: o.date|date('Y-m')}) }}">← К операциям</a>
 {% endblock %}

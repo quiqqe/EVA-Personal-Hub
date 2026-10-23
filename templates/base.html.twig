@@ -13,8 +13,8 @@
     <link rel="manifest" href="{{ path('manifest') }}">
     <link rel="icon" href="/icon.svg?v=2" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2">
-    <link rel="stylesheet" href="/app.css?v=33">
-    <script src="/app.js?v=30" defer></script>
+    <link rel="stylesheet" href="/app.css?v=34">
+    <script src="/app.js?v=32" defer></script>
 </head>
 <body class="{% block body_class %}{% endblock %}"{% if app.user and app.user.timezoneAuto %} data-tz-url="{{ path('profile_timezone') }}" data-tz="{{ app.user.timezone }}" data-tz-token="{{ csrf_token('form') }}"{% endif %}>
 {% block header %}
@@ -23,7 +23,7 @@
             <a href="{{ path('hub') }}" class="brand" aria-label="EVA — все инструменты"><img class="brand-mark" src="/icon.svg?v=2" alt="" width="30" height="30"><span class="brand-name">EVA</span></a>
             {% block header_center %}{% endblock %}
             <div class="top-actions">
-                <button type="button" class="icon-btn" data-theme-toggle aria-label="Тема оформления" title="Тема: системная">◐</button>
+                <button type="button" class="icon-btn" data-theme-toggle aria-label="Тема оформления" title="Тема: системная">{{ icon('contrast') }}</button>
                 {% if app.user %}<a href="{{ path('profile') }}" class="avatar" title="{{ app.user.name }}">{{ app.user.name|first|upper }}</a>{% endif %}
             </div>
         </div>

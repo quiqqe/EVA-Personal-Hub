@@ -5,13 +5,13 @@
 {% set people = o.splits|filter(sp => sp.amount > 0)|length %}
 {% if bulk|default(false) %}<label class="op-check"><input type="checkbox" form="bulk" name="ids[]" value="{{ o.id }}" aria-label="Выбрать"></label>{% endif %}
 <a class="op" href="{{ path('money_operation_edit', {scope: o.group ? o.group.id : scope.key, id: o.id}) }}">
-    <span class="op-icon">{{ o.type == 'transfer' ? '🔁' : (o.category ? o.category.icon : (o.type == 'income' ? '💰' : '💸')) }}</span>
+    <span class="op-icon">{% if o.type == 'transfer' %}{{ icon('repeat') }}{% elseif o.category and o.category.icon %}{{ o.category.icon }}{% else %}{{ icon(o.type) }}{% endif %}</span>
     <span class="op-main">
         <b>{{ o.type == 'transfer' ? 'Перевод' : (o.category ? o.category.name : 'Без категории') }}</b>
         <small>
             {% if o.account %}{{ o.account.name }}{% elseif o.paidBy %}оплата: {{ o.paidBy.name }}{% else %}оплата: несколько человек{% endif %}
             {% if o.toAccount %} → {{ o.toAccount.name }}{% endif %}
-            {% if people %} · 👥 на {{ people }}{% endif %}
+            {% if people %} · {{ icon('users') }} на {{ people }}{% endif %}
             {% if o.note %} · {{ o.note }}{% endif %}
             {% if scope.group and o.createdBy and o.createdBy != app.user %} · внесено: {{ o.createdBy.name }}{% endif %}
         </small>

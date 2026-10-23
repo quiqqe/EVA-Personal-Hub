@@ -20,11 +20,11 @@
 
     <h2>Строк: {{ parsed|length }}{% if skipped %} <small class="muted">(без даты/суммы или без курса — пропущено: {{ skipped }})</small>{% endif %}</h2>
     {% if parsed %}
-    <p class="muted small">Снимите галочку у строк, которые не нужны. «⇄» — это перевод между вашими счетами (например, с карты на карту или снятие наличных): он не станет ни расходом, ни доходом.</p>
+    <p class="muted small">Снимите галочку у строк, которые не нужны. «{{ icon('exchange') }}» — это перевод между вашими счетами (например, с карты на карту или снятие наличных): он не станет ни расходом, ни доходом.</p>
     <label>Второй счёт для строк-переводов
         <select name="transfer_account">
             <option value="">—</option>
-            {% for a in others %}<option value="{{ a.id }}" {{ transferTo == a ? 'selected' }}>{{ a.icon }} {{ a.name }} · {{ a.currency }}</option>{% endfor %}
+            {% for a in others %}<option value="{{ a.id }}" {{ transferTo == a ? 'selected' }}>{{ a.name }} · {{ a.currency }}</option>{% endfor %}
         </select>
     </label>
     <div class="import-rows">
@@ -33,7 +33,7 @@
                 <input type="checkbox" name="keep[]" value="{{ i }}" {{ keep is null or keep[i] is defined ? 'checked' }} aria-label="Импортировать строку">
                 <span class="import-main"><b>{{ o.note ?: '—' }}</b><small>{{ o.date|date('d.m.Y') }}{{ o.category ? ' · ' ~ o.category.label }}{{ o.origCurrency ? ' · ' ~ o.origAmount|money(o.origCurrency) }}</small></span>
                 <span class="{{ o.type }}">{{ o.type == 'income' ? '+' : '−' }}{{ o.amount|money(o.currency) }}</span>
-                <label class="chip import-transfer" title="Это перевод между своими счетами"><input type="checkbox" name="transfer[]" value="{{ i }}" {{ asTransfer[i] is defined ? 'checked' }}> ⇄</label>
+                <label class="chip import-transfer" title="Это перевод между своими счетами"><input type="checkbox" name="transfer[]" value="{{ i }}" {{ asTransfer[i] is defined ? 'checked' }}> {{ icon('exchange') }}</label>
             </div>
         {% endfor %}
     </div>

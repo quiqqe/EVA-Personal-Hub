@@ -18,15 +18,18 @@ class Account
     use Scoped;
 
     public const TYPES = [
-        'cash' => '💵 Наличные',
-        'card' => '💳 Карта',
-        'bank' => '🏦 Банковский счёт',
-        'savings' => '🐷 Накопления / вклад',
-        'credit' => '🧾 Кредитка / кредит',
-        'investment' => '📈 Инвестиции',
-        'debt' => '🤝 Долги',
-        'other' => '📦 Прочее',
+        'cash' => 'Наличные',
+        'card' => 'Карта',
+        'bank' => 'Банковский счёт',
+        'savings' => 'Накопления / вклад',
+        'credit' => 'Кредитка / кредит',
+        'investment' => 'Инвестиции',
+        'debt' => 'Долги',
+        'other' => 'Прочее',
     ];
+
+    /** Interface icon per type (public/icons.svg). */
+    public const ICONS = ['cash' => 'cash', 'card' => 'card', 'bank' => 'bank', 'savings' => 'piggy', 'credit' => 'receipt', 'investment' => 'trending', 'debt' => 'handshake', 'other' => 'box'];
 
     #[ORM\Id, ORM\Column(type: UuidType::NAME)]
     public Uuid $id;
@@ -67,7 +70,7 @@ class Account
 
     public function icon(): string
     {
-        return explode(' ', self::TYPES[$this->type] ?? '📦')[0];
+        return self::ICONS[$this->type] ?? 'box';
     }
 
     /** Name with the owner, for lists that mix personal and group accounts. */

@@ -1,16 +1,16 @@
 {% extends 'base.html.twig' %}
 {% block body %}
 <div class="hub-hello">
-    <h1>Привет, {{ app.user.name }} 👋</h1>
+    <h1>Привет, {{ app.user.name }}</h1>
     <p class="muted">Все ваши инструменты — в одном месте.</p>
 </div>
 
 {% if telegram_bot() and not app.user.telegramId %}
-<a class="hint hub-banner" href="{{ path('profile') }}">📲 Привяжите Telegram в профиле — вход в один тап и восстановление пароля, если забудете.</a>
+<a class="hint hub-banner" href="{{ path('profile') }}">{{ icon('send') }} Привяжите Telegram в профиле — вход в один тап и восстановление пароля, если забудете.</a>
 {% endif %}
 <div class="tiles">
     <a class="tile featured" href="{{ path('money', {scope: 'me'}) }}">
-        <span class="tile-icon">💰</span>
+        <span class="tile-icon">{{ icon('wallet') }}</span>
         <small>Деньги · всего на счетах</small>
         {% if accounts %}
             <span class="big">{{ total|money(app.user.currency, true) }}</span>
@@ -23,29 +23,29 @@
     {% for row in groups %}
         {% set g = row.group %}
         <a class="tile" href="{{ path('money', {scope: g.id}) }}">
-            <span class="tile-icon">👥</span>
+            <span class="tile-icon">{{ icon('users') }}</span>
             <b>{{ g.name }}</b>
             {% if row.total is not null %}<span class="tile-sum">{{ row.total|money(g.currency, true) }}</span>{% endif %}
             <small>Общие деньги · {{ g.memberships|length }} чел.</small>
         </a>
     {% endfor %}
     <a class="tile" href="{{ path('groups') }}">
-        <span class="tile-icon">👨‍👩‍👧</span>
+        <span class="tile-icon">{{ icon('users') }}</span>
         <b>Группы</b>
         <small>Семья, друзья, приглашения</small>
     </a>
     <a class="tile" href="{{ path('profile') }}">
-        <span class="tile-icon">⚙️</span>
+        <span class="tile-icon">{{ icon('settings') }}</span>
         <b>Профиль</b>
         <small>Имя, валюта, пароль, тема</small>
     </a>
     <a class="tile" href="{{ path('help') }}">
-        <span class="tile-icon">❓</span>
+        <span class="tile-icon">{{ icon('help') }}</span>
         <b>Как это работает</b>
         <small>Счета, группы, валюты, долги — коротко</small>
     </a>
     <div class="tile soon">
-        <span class="tile-icon">✨</span>
+        <span class="tile-icon">{{ icon('sparkles') }}</span>
         <small>Здесь появятся новые инструменты</small>
     </div>
 </div>

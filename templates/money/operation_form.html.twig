@@ -50,7 +50,7 @@
 
     {% if scope.group and not recurring %}
     <div data-show="expense">
-        <label class="check"><input type="checkbox" name="split" value="1" {{ split ? 'checked' }} data-split> 👥 Разделить между участниками</label>
+        <label class="check"><input type="checkbox" name="split" value="1" {{ split ? 'checked' }} data-split> {{ icon('users') }} Разделить между участниками</label>
         <div data-split-box class="split-box">
             <label>Кто платил
                 <select name="paid_by" data-payer data-me="{{ app.user.id }}">
@@ -85,17 +85,17 @@
         <select name="account" data-currency-source>
             {% set current = post.account ?? (o.account ? o.account.id.toRfc4122 : '') %}
             {% if o.account and o.account not in sources %}<option value="{{ o.account.id }}" data-cur="{{ o.account.currency }}" data-owner="{{ o.account.user ? o.account.user.id }}" data-name="{{ o.account.name }}" selected>{{ o.account.label }}</option>{% endif %}
-            {% for a in sources %}<option value="{{ a.id }}" data-cur="{{ a.currency }}" data-name="{{ a.name }}" data-group="{{ a.group ? a.group.id }}" data-mine="{{ a.user == app.user ? 1 : '' }}" data-owner="{{ a.user ? a.user.id }}" data-shared="{{ a.sharedWith|map(g => g.id.toRfc4122)|join(' ') }}" {{ current == a.id.toRfc4122 ? 'selected' }}>{{ a.icon }} {{ scope.group ? a.label : a.name }} · {{ a.currency }}</option>{% endfor %}
+            {% for a in sources %}<option value="{{ a.id }}" data-cur="{{ a.currency }}" data-name="{{ a.name }}" data-group="{{ a.group ? a.group.id }}" data-mine="{{ a.user == app.user ? 1 : '' }}" data-owner="{{ a.user ? a.user.id }}" data-shared="{{ a.sharedWith|map(g => g.id.toRfc4122)|join(' ') }}" {{ current == a.id.toRfc4122 ? 'selected' }}>{{ scope.group ? a.label : a.name }} · {{ a.currency }}</option>{% endfor %}
         </select>
         {% if not sources %}<a href="{{ path('money_account_new', {scope: scope.key}) }}">Сначала добавьте счёт</a>{% endif %}
     </label>
     {% if scope.group and not recurring %}
     <div class="hint" data-hint-topup hidden>
-        💡 Пополняете общий счёт деньгами <b>со своей карты</b>? Тогда это перевод: с карты спишется, на общий счёт придёт. «Доход» — только для новых денег извне (например, зарплата сразу на общую карту).
+        {{ icon('bulb') }} Пополняете общий счёт деньгами <b>со своей карты</b>? Тогда это перевод: с карты спишется, на общий счёт придёт. «Доход» — только для новых денег извне (например, зарплата сразу на общую карту).
         <button type="button" class="btn small" data-make-transfer>Сделать переводом</button>
     </div>
     <div class="hint" data-hint-unshared hidden>
-        💡 Карта «<span data-hint-account></span>» не показана группе: операция будет во «Внесено в группе», но не в «Общих деньгах» группы.
+        {{ icon('bulb') }} Карта «<span data-hint-account></span>» не показана группе: операция будет во «Внесено в группе», но не в «Общих деньгах» группы.
         <button type="button" class="btn small" data-share-account>Показать карту группе</button>
     </div>
     {% endif %}
@@ -122,7 +122,7 @@
             <select name="to_account" data-currency-target>
                 {% set to = post.to_account ?? (o.toAccount ? o.toAccount.id.toRfc4122 : '') %}
                 <option value="">—</option>
-                {% for a in targets %}<option value="{{ a.id }}" data-cur="{{ a.currency }}" {{ to == a.id.toRfc4122 ? 'selected' }}>{{ a.icon }} {{ a.label }} · {{ a.currency }}</option>{% endfor %}
+                {% for a in targets %}<option value="{{ a.id }}" data-cur="{{ a.currency }}" {{ to == a.id.toRfc4122 ? 'selected' }}>{{ a.label }} · {{ a.currency }}</option>{% endfor %}
             </select>
         </label>
         <div data-to-amount class="fx">
@@ -189,7 +189,7 @@
 {% elseif not isNew %}
 <form method="post" action="{{ path('money_recurring_toggle', {scope: scope.key, id: o.id}) }}" class="actions">
     <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
-    <button class="btn">{{ o.active ? '⏸ Поставить на паузу' : '▶️ Продолжить' }}</button>
+    <button class="btn">{{ icon(o.active ? 'pause' : 'play') }} {{ o.active ? 'Поставить на паузу' : 'Продолжить' }}</button>
     <button class="btn danger" name="delete" value="1" data-confirm="Удалить шаблон? Уже созданные операции останутся.">Удалить шаблон</button>
 </form>
 {% endif %}

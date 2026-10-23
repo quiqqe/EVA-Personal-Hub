@@ -1,8 +1,8 @@
 {% extends 'base.html.twig' %}
 {% block title %}{{ group.name }} — EVA{% endblock %}
 {% block body %}
-<h1>👥 {{ group.name }}</h1>
-<a class="btn primary" href="{{ path('money', {scope: group.id}) }}">💰 Деньги группы</a>
+<h1>{{ group.name }}</h1>
+<a class="btn primary" href="{{ path('money', {scope: group.id}) }}">{{ icon('wallet') }} Деньги группы</a>
 
 <section class="card">
     <h2>Участники</h2>

@@ -9,5 +9,5 @@
 {% endif %}
 {% if fx and fx.base > 0 and (fx.loss / fx.base)|abs >= 0.001 %}
     {% set pct = (fx.loss / fx.base * 100)|abs|round(1) %}
-    <p class="hint">💱 {% if fx.loss > 0 %}Курс хуже рыночного на {{ pct }}% — потеря {{ fx.loss|money(fx.cur, true) }}{% else %}Курс лучше рыночного на {{ pct }}% — выгода {{ (-fx.loss)|money(fx.cur, true) }}{% endif %} по сравнению с курсом на {{ o.date|date('d.m.Y') }}.</p>
+    <p class="hint">{{ icon('coins') }} {% if fx.loss > 0 %}Курс хуже рыночного на {{ pct }}% — потеря {{ fx.loss|money(fx.cur, true) }}{% else %}Курс лучше рыночного на {{ pct }}% — выгода {{ (-fx.loss)|money(fx.cur, true) }}{% endif %} по сравнению с курсом на {{ o.date|date('d.m.Y') }}.</p>
 {% endif %}

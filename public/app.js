@@ -19,7 +19,7 @@ function searchableSelect(sel) {
     const pop = document.createElement('div');
     pop.className = 'ss-pop';
     pop.hidden = true;
-    pop.innerHTML = '<div class="ss-head"><input type="search" class="ss-search" placeholder="Поиск…" autocomplete="off" aria-label="Поиск"><button type="button" class="ss-close" aria-label="Закрыть">✕</button></div><ul class="ss-list" role="listbox"></ul>';
+    pop.innerHTML = '<div class="ss-head"><input type="search" class="ss-search" placeholder="Поиск…" autocomplete="off" aria-label="Поиск"><button type="button" class="ss-close" aria-label="Закрыть"><svg class="i" aria-hidden="true"><use href="/icons.svg?v=2#x"/></svg></button></div><ul class="ss-list" role="listbox"></ul>';
     const search = pop.querySelector('.ss-search'), list = pop.querySelector('.ss-list');
     // the visible button takes the select's place for <label>s: label text opens the picker
     if (sel.id) { btn.id = sel.id; sel.removeAttribute('id'); }
@@ -122,11 +122,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('select:not([data-nav])').forEach(sel => { if (sel.options.length >= 10) searchableSelect(sel); });
 
     // theme: system → light → dark, remembered in this browser
-    const THEMES = {'': ['◐', 'системная'], light: ['☀', 'светлая'], dark: ['☾', 'тёмная']};
+    const THEMES = {'': ['contrast', 'системная'], light: ['sun', 'светлая'], dark: ['moon', 'тёмная']};
     const setTheme = t => {
         t ? document.documentElement.dataset.theme = t : delete document.documentElement.dataset.theme;
         try { t ? localStorage.setItem('theme', t) : localStorage.removeItem('theme'); } catch (e) {}
-        document.querySelectorAll('[data-theme-toggle]').forEach(b => { b.textContent = THEMES[t][0]; b.title = 'Тема: ' + THEMES[t][1]; });
+        document.querySelectorAll('[data-theme-toggle]').forEach(b => { b.innerHTML = `<svg class="i" aria-hidden="true"><use href="/icons.svg?v=2#${THEMES[t][0]}"/></svg>`; b.title = 'Тема: ' + THEMES[t][1]; });
         document.querySelectorAll('[name=theme_choice]').forEach(r => { r.checked = r.value === t; });
     };
     const current = () => document.documentElement.dataset.theme || '';

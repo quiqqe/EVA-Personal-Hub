@@ -4,7 +4,7 @@
 <form method="post" class="auth-form">
     <h2>Создать аккаунт</h2>
     <p class="muted">Один аккаунт для всех инструментов</p>
-    {% if invitedTo %}<div class="flash flash-ok">👥 Вы вступаете в группу «{{ invitedTo.name }}» — войдите или зарегистрируйтесь, и сразу попадёте туда.</div>{% endif %}
+    {% if invitedTo %}<div class="flash flash-ok">{{ icon('users') }} Вы вступаете в группу «{{ invitedTo.name }}» — войдите или зарегистрируйтесь, и сразу попадёте туда.</div>{% endif %}
     {% if error %}<div class="flash flash-error" role="alert">{{ error }}</div>{% endif %}
 
     {% if telegram_bot() %}

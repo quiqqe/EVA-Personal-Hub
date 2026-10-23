@@ -34,6 +34,13 @@ final class AppExtension
     }
 
     /** Effective rate of an exchange: "1 USDT = 395,2 AMD" */
+    /** An interface icon from public/icons.svg; decorative, the text next to it carries the meaning. */
+    #[AsTwigFunction('icon', isSafe: ['html'])]
+    public static function icon(string $name): string
+    {
+        return '<svg class="i" aria-hidden="true"><use href="/icons.svg?v=2#'.htmlspecialchars($name).'"/></svg>';
+    }
+
     #[AsTwigFunction('fx_rate')]
     public static function fxRate(int $amount, string $from, int $toAmount, string $to): string
     {

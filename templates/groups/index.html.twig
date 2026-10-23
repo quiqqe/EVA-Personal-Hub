@@ -5,7 +5,7 @@
 <p class="muted">Семья, друзья, соседи — общие счета, деление трат и долги.</p>
 <div class="list card">
     {% for g in groups %}
-        <a class="row" href="{{ path('group', {id: g.id}) }}"><span>👥 {{ g.name }}</span><span class="muted">{{ g.memberships|length }} чел. · {{ g.currency }}</span></a>
+        <a class="row" href="{{ path('group', {id: g.id}) }}"><span>{{ icon('users') }} {{ g.name }}</span><span class="muted">{{ g.memberships|length }} чел. · {{ g.currency }}</span></a>
     {% else %}
         <p class="muted">Пока нет групп</p>
     {% endfor %}

@@ -4,7 +4,7 @@
 {% if accounts %}
 <form method="post" enctype="multipart/form-data" class="card stack">
     <label>Файл CSV из банка <input type="file" name="file" accept=".csv,text/csv,text/plain" required></label>
-    <label>В какой счёт <select name="account">{% for a in accounts %}<option value="{{ a.id }}">{{ a.icon }} {{ a.name }} · {{ a.currency }}</option>{% endfor %}</select></label>
+    <label>В какой счёт <select name="account">{% for a in accounts %}<option value="{{ a.id }}">{{ a.name }} · {{ a.currency }}</option>{% endfor %}</select></label>
     <input type="hidden" name="_token" value="{{ csrf_token('form') }}">
     <button class="btn primary">Дальше</button>
 </form>
