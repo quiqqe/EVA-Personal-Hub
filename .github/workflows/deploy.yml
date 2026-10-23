@@ -39,11 +39,12 @@ jobs:
           DEFAULT_URI: ${{ secrets.DEFAULT_URI }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_BOT_USERNAME: ${{ secrets.TELEGRAM_BOT_USERNAME }}
+          TELEGRAM_ADMIN_CHAT_ID: ${{ secrets.TELEGRAM_ADMIN_CHAT_ID }}
         run: |
           install -m 700 -d ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
           # the key is locked to bin/ci-deploy on the server: it only reads these settings and deploys main
-          for v in HTTP_PORT DEFAULT_URI TELEGRAM_BOT_TOKEN TELEGRAM_BOT_USERNAME; do
+          for v in HTTP_PORT DEFAULT_URI TELEGRAM_BOT_TOKEN TELEGRAM_BOT_USERNAME TELEGRAM_ADMIN_CHAT_ID; do
             printf '%s=%s\n' "$v" "${!v}"
           done | ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$SSH_USER@$SSH_HOST"

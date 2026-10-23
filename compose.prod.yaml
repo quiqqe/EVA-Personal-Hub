@@ -1,8 +1,17 @@
 # Production: docker compose -f compose.prod.yaml --env-file .env.local up -d --build
+
+# every container: logs rotate at 10 MB, 5 files kept — they must never fill the disk
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
+    logging: *logging
     ports:
       - "127.0.0.1:${HTTP_PORT:-8080}:80"
     volumes:
@@ -16,6 +25,7 @@ services:
       context: .
       target: prod
     restart: unless-stopped
+    logging: *logging
     env_file:
       - path: .env.local
         required: true
@@ -30,6 +40,7 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    logging: *logging
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-eva}
       POSTGRES_USER: ${POSTGRES_USER:-eva}

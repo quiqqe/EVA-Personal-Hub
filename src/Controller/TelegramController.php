@@ -188,7 +188,12 @@ final class TelegramController extends BaseController
         try {
             $u = Telegram::parse(json_decode($r->getContent(), true) ?: []);
             if ($u) {
-                $u['kind'] === 'start' ? $this->onStart($u) : $this->onButton($u);
+                match ($u['kind']) {
+                    'start' => $this->onStart($u),
+                    'button' => $this->onButton($u),
+                    // for setting up alerts: the id of this chat (a group with the bot, or a private chat)
+                    'chatid' => $this->telegram->call('sendMessage', ['chat_id' => $u['chatId'], 'text' => 'ID этого чата: '.$u['chatId']]),
+                };
             }
         } catch (\Throwable $e) {
             $this->logger->error('Telegram update failed: '.$e->getMessage());

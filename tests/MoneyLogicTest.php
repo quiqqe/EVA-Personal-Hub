@@ -195,4 +195,28 @@ final class MoneyLogicTest extends TestCase
         self::assertNull(Telegram::verifyWebApp($signed, $token, 1000 + 86401), 'too old');
         self::assertNull(Telegram::verifyWebApp('', $token, 2000));
     }
+
+    public function testAlertsGoOncePerErrorAndSkip4xx(): void
+    {
+        $sent = [];
+        $http = new \Symfony\Component\HttpClient\MockHttpClient(function (string $method, string $url, array $options) use (&$sent) {
+            $sent[] = json_decode($options['body'], true)['text'];
+
+            return new \Symfony\Component\HttpClient\Response\MockResponse('{"ok":true}');
+        });
+        $tg = new Telegram($http, '111:T', 'bot', '-100');
+        $h = new \App\Monitoring\TelegramAlertHandler($tg, new \Symfony\Component\Cache\Adapter\ArrayAdapter(), new \Symfony\Component\HttpFoundation\RequestStack());
+        $log = new \Monolog\Logger('request', [$h]);
+
+        $log->error('Not found', ['exception' => new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException()]);
+        self::assertSame([], $sent, '404 is not an alert');
+        $boom = new \RuntimeException('Boom');
+        $log->critical('Boom', ['exception' => $boom]);
+        $log->critical('Boom', ['exception' => $boom]);
+        self::assertCount(1, $sent, 'the same error once per 10 minutes');
+        self::assertStringContainsString('Boom', $sent[0]);
+        self::assertFalse((new Telegram($http, '111:T', 'bot', ''))->alert('x'), 'no admin chat — no alert');
+
+        self::assertSame('chatid', Telegram::parse(['message' => ['chat' => ['id' => -100, 'type' => 'group'], 'from' => ['id' => 1], 'text' => '/chatid@evabot']])['kind'] ?? null);
+    }
 }

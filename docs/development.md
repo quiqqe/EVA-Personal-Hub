@@ -74,6 +74,11 @@ tests/MoneyLogicTest   unit-тесты Money, Debts, Schedule, Csv
 - `branding/` — логотип и картинки для Telegram: `logo.svg` (= `public/icon.svg`), `logo-mark.svg` (только «E»),
   `bot-avatar.svg/png` 640×640 (аватарка бота, Telegram обрезает кругом), `miniapp-cover.svg/png` 640×360 (BotFather `/newapp`).
   PNG отрисованы из SVG в Chromium со шрифтом Manrope; в образ папка не попадает.
+- **Мониторинг.** Ошибки приложения (кроме 4xx) уходят в админский Telegram-чат (`TELEGRAM_ADMIN_CHAT_ID`):
+  `App\Monitoring\TelegramAlertHandler` в `monolog.yaml` (только prod), одна и та же ошибка — не чаще раза в 10 минут.
+  id чата: добавить бота в группу (или написать ему) и отправить `/chatid`. `bin/console app:alert "текст"`
+  (или `-` — из stdin) шлёт сообщение туда же — им пользуются серверные скрипты, чтобы токен бота был только в приложении.
+  Логи контейнеров ротируются (`compose.prod.yaml`, `x-logging`: 10 МБ × 5).
 - Лимиты попыток — `config/packages/rate_limiter.yaml` (`auth`); выход — POST с `csrf_token('logout')`.
 - Справка `/help` и «Что нового» `/changelog` рендерят `docs/user-guide.md` и `docs/changelog.md` (league/commonmark);
   оба файла исключены из `*.md` в `.dockerignore`, иначе их не будет в образе.
@@ -93,7 +98,7 @@ tests/MoneyLogicTest   unit-тесты Money, Debts, Schedule, Csv
   генерирует при первом запуске и больше не меняет; без обязательных переменных останавливается до сборки
   (сайт остаётся на старой версии); собирает образ, поднимает, применяет миграции, проверяет, что сайт отвечает.
 - Секреты GitHub: `SSH_KEY`, `SSH_KNOWN_HOSTS`, `SSH_HOST`, `SSH_USER`, `HTTP_PORT`, `DEFAULT_URI`,
-  `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`.
+  `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `TELEGRAM_ADMIN_CHAT_ID` (необязательный — куда слать уведомления).
 
 **Новая переменная окружения:** пустой плейсхолдер с комментарием в `.env`; имя — в `ALLOWED` в `bin/ci-deploy`,
 в `PASSED` (и `REQUIRED`, если без неё нельзя) в `bin/deploy`, в `env` и список `for v in ...` в workflow;

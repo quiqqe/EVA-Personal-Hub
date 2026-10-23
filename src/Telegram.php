@@ -14,7 +14,22 @@ final readonly class Telegram
         private HttpClientInterface $http,
         #[Autowire(env: 'TELEGRAM_BOT_TOKEN')] private string $token,
         #[Autowire(env: 'TELEGRAM_BOT_USERNAME')] public string $botUsername,
+        // where alerts go (errors, server events): a private chat or a group with the bot; empty = no alerts
+        #[Autowire(env: 'default::TELEGRAM_ADMIN_CHAT_ID')] private ?string $adminChat = null,
     ) {
+    }
+
+    /** A message to the admin chat. Never throws: an alert must not break what triggered it. */
+    public function alert(string $text): bool
+    {
+        if (!$this->enabled() || !$this->adminChat) {
+            return false;
+        }
+        try {
+            return (bool) ($this->call('sendMessage', ['chat_id' => $this->adminChat, 'text' => mb_substr($text, 0, 4000), 'disable_web_page_preview' => true])['ok'] ?? false);
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     public function enabled(): bool
@@ -39,7 +54,7 @@ final readonly class Telegram
      * The parts of an update we act on:
      * "/start <code>" in a private chat, or a press on an inline button.
      *
-     * @return array{kind: 'start'|'button', tgId: int, name: string, chatId: int, param: string, callbackId?: string, messageId?: int}|null
+     * @return array{kind: 'start'|'button'|'chatid', tgId: int, name: string, chatId: int, param: string, callbackId?: string, messageId?: int}|null
      */
     public static function parse(array $update): ?array
     {
@@ -57,6 +72,9 @@ final readonly class Telegram
             ];
         }
         $m = $update['message'] ?? null;
+        if (isset($m['chat']['id']) && preg_match('/^\/chatid(?:@\w+)?\s*$/', (string) ($m['text'] ?? ''))) {
+            return ['kind' => 'chatid', 'tgId' => (int) ($m['from']['id'] ?? 0), 'name' => '', 'chatId' => (int) $m['chat']['id'], 'param' => ''];
+        }
         if (!isset($m['from']['id'], $m['chat']['id']) || ($m['chat']['type'] ?? '') !== 'private'
             || !preg_match('/^\/start(?:@\w+)?(?:\s+([A-Za-z0-9_-]{1,64}))?\s*$/', (string) ($m['text'] ?? ''), $mm)) {
             return null;
